@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X, LogOut } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
   sidebar: React.ReactNode;
+  onLogout?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, sidebar }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, sidebar, onLogout }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
@@ -22,8 +23,20 @@ export const Layout: React.FC<LayoutProps> = ({ children, sidebar }) => {
               数据治理健康管家 <span className="text-slate-400 font-normal text-xs sm:text-sm">| ERP Master Data</span>
             </h1>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-500 bg-slate-100/50 px-3 sm:px-4 py-1.5 rounded-full border border-slate-200">
-            <span>上次扫描: <strong className="text-slate-700">今天, 04:00 AM</strong></span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-slate-500 bg-slate-100/50 px-3 sm:px-4 py-1.5 rounded-full border border-slate-200">
+              <span>上次扫描: <strong className="text-slate-700">今天, 04:00 AM</strong></span>
+            </div>
+            
+            {onLogout && (
+              <button 
+                onClick={onLogout}
+                className="flex items-center gap-2 text-slate-500 hover:text-red-600 transition-colors text-sm font-medium px-3 py-1.5 rounded-lg hover:bg-red-50"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">退出登录</span>
+              </button>
+            )}
           </div>
         </header>
 
