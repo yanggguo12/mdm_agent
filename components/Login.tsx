@@ -139,13 +139,6 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center cursor-pointer group">
-                  <input type="checkbox" className="w-4 h-4 rounded border-slate-300 bg-white text-blue-600 focus:ring-blue-500/20" />
-                  <span className="ml-2 text-sm text-slate-500 group-hover:text-slate-700 transition-colors tracking-tight">记住我的登录状态</span>
-                </label>
-                <a href="#" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors tracking-tight">无法登录?</a>
-              </div>
 
               <button
                 type="submit"
