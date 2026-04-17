@@ -1,0 +1,5 @@
+{
+  "name": "Remix: 数据治理健康管家",
+  "description": "An AI-powered active data governance dashboard for SAP environments. Features automated health checks, anomaly detection, and human-in-the-loop auto-repairs.",
+  "requestFramePermissions": []
+}
