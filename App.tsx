@@ -14,8 +14,9 @@ import { AccuracyConfigModal } from './components/AccuracyConfigModal';
 import { ComplianceConfigModal } from './components/ComplianceConfigModal';
 import { RepairDetailsModal } from './components/RepairDetailsModal';
 import { IssueDetailsModal } from './components/IssueDetailsModal';
+import { HistoryModal } from './components/HistoryModal';
 import { generateAndProcessData, processData } from './utils/dataProcessor';
-import { DataIssue, HealthMetric } from './types';
+import { DataIssue, HealthMetric, ScanHistoryItem } from './types';
 import { Play, RotateCcw, ShieldCheck, Zap, Activity, ChevronDown, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -47,7 +48,32 @@ const App = () => {
   
   const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>(['基础数据MARA']);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [history, setHistory] = useState<ScanHistoryItem[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Initialize some history data
+  useEffect(() => {
+    const mockHistory: ScanHistoryItem[] = [
+      {
+        id: 'h1',
+        timestamp: '2026-04-22 14:30:15',
+        overallScore: 84,
+        category: '基础数据MARA',
+        metrics: JSON.parse(JSON.stringify(metrics)).map((m: any) => ({ ...m, score: m.score - 5 })),
+        issues: JSON.parse(JSON.stringify(issues)).slice(0, 5)
+      },
+      {
+        id: 'h2',
+        timestamp: '2026-04-20 09:12:44',
+        overallScore: 78,
+        category: '基础数据MARA',
+        metrics: JSON.parse(JSON.stringify(metrics)).map((m: any) => ({ ...m, score: m.score - 12 })),
+        issues: JSON.parse(JSON.stringify(issues)).slice(0, 8)
+      }
+    ];
+    setHistory(mockHistory);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -110,13 +136,39 @@ const App = () => {
     setTimeout(() => {
       setScanStep(4); // Done
       // Randomly tweak metrics to show "Live" update
-      setMetrics(prev => prev.map(m => ({
+      const newMetrics = metrics.map(m => ({
         ...m,
         score: Math.min(100, Math.max(0, m.score + (Math.random() > 0.5 ? 1 : -1)))
-      })));
+      }));
+      setMetrics(newMetrics);
+      
+      // Save to history
+      const now = new Date();
+      const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      
+      const newHistoryItem: ScanHistoryItem = {
+        id: `h-${Date.now()}`,
+        timestamp,
+        overallScore: Math.round(newMetrics.reduce((acc, m) => acc + m.score, 0) / newMetrics.length),
+        category: selectedCategories.join(', '),
+        metrics: JSON.parse(JSON.stringify(newMetrics)),
+        issues: JSON.parse(JSON.stringify(issues))
+      };
+      
+      setHistory(prev => [newHistoryItem, ...prev]);
     }, 6000);
     
     setTimeout(() => setScanStep(0), 8000); // Reset UI after delay
+  };
+
+  const handleLoadHistory = (item: ScanHistoryItem) => {
+    setMetrics(JSON.parse(JSON.stringify(item.metrics)));
+    setIssues(JSON.parse(JSON.stringify(item.issues)));
+    setIsHistoryModalOpen(false);
+  };
+
+  const handleDeleteHistory = (id: string) => {
+    setHistory(prev => prev.filter(h => h.id !== id));
   };
 
   const handleRepair = (issueToFix: DataIssue) => {
@@ -252,7 +304,10 @@ const App = () => {
                  </div>
               </div>
               <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
-                  <button className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all">
+                  <button 
+                    onClick={() => setIsHistoryModalOpen(true)}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
+                  >
                       <RotateCcw size={16} />
                       加载历史记录
                   </button>
@@ -375,6 +430,14 @@ const App = () => {
                   </div>
                </div>
             </div>
+
+            <HistoryModal
+              isOpen={isHistoryModalOpen}
+              onClose={() => setIsHistoryModalOpen(false)}
+              history={history}
+              onLoad={handleLoadHistory}
+              onDelete={handleDeleteHistory}
+            />
 
             <IssueModal 
               isOpen={isModalOpen} 

@@ -45,6 +45,15 @@ export interface HealthMetric {
   };
 }
 
+export interface ScanHistoryItem {
+  id: string;
+  timestamp: string;
+  overallScore: number;
+  metrics: HealthMetric[];
+  issues: DataIssue[];
+  category: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'model';

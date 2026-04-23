@@ -15,8 +15,8 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
   const [isDraggingExt, setIsDraggingExt] = useState(false);
   const [isUploadingExt, setIsUploadingExt] = useState(false);
   const [externalDocs, setExternalDocs] = useState([
-    { id: 'ext1', name: '2026海关税则目录.pdf', rules: 120 },
-    { id: 'ext2', name: 'RoHS环保标准指引.docx', rules: 18 }
+    { id: 'ext1', name: '2026海关税则目录.pdf', rules: 2 },
+    { id: 'ext2', name: 'RoHS环保标准指引.docx', rules: 2 }
   ]);
   const extFileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -24,23 +24,97 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
   const [isDraggingInt, setIsDraggingInt] = useState(false);
   const [isUploadingInt, setIsUploadingInt] = useState(false);
   const [internalDocs, setInternalDocs] = useState([
-    { id: 'int1', name: '主数据命名规范_V3.pdf', rules: 45 },
-    { id: 'int2', name: '物料与图纸关联管理办法.docx', rules: 12 }
+    { id: 'int1', name: '主数据命名规范_V3.pdf', rules: 2 },
+    { id: 'int2', name: '物料与图纸关联管理办法.docx', rules: 1 }
   ]);
   const intFileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Rules extracted
-  const rules = [
-    { id: 'r1', type: 'external', title: '海关税号合规检查', desc: '检查税号(STEUC)是否在最新目录中', action: 'API模糊匹配' },
-    { id: 'r2', type: 'external', title: '环保认证有效期', desc: '检查物料是否有最新环保认证', action: '跨系统验证' },
-    { id: 'r3', type: 'internal', title: '命名规范检查', desc: '描述是否符合“品名+规格”的顺序', action: 'LLM语义分析' },
-    { id: 'r4', type: 'internal', title: '图纸附件检查', desc: '核心生产物料是否有对应的图纸附件', action: '关联性校验' }
-  ];
+  const [rules] = useState([
+    { 
+      id: 'r1', 
+      type: 'external', 
+      title: '海关税号 (STEUC) 有效性校验', 
+      desc: '验证申报税号是否属于 2026 最新进出口税则目录范畴', 
+      action: 'API 模糊匹配',
+      logic: '将企业物料的 Steuer-ID 与 2026 海关税则数据库进行跨系统对撞。若匹配度低于 95% 或税号已失效，则标记为违规。',
+      sourceDoc: '2026海关税则目录.pdf',
+      severity: '致命 (Blocking)'
+    },
+    { 
+      id: 'r5', 
+      type: 'external', 
+      title: 'HS Code 归类一致性审计', 
+      desc: '检查相同类别的物料是否使用了统一的统计编码', 
+      action: '聚类分析',
+      logic: '通过 AI 对 MATKL (物料组) 进行聚类，检测群组内的 HS Code 离散度。方差过大则提示归类风险。',
+      sourceDoc: '2026海关税则目录.pdf',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r2', 
+      type: 'external', 
+      title: '环保认证有效期', 
+      desc: '检查物料是否有最新环保认证', 
+      action: '跨系统验证',
+      logic: '抓取 SRM 系统中的供应商证书附件，识别 RoHS/REACH 证书的截止日期。若日期小于当前时间，则自动触发冻结状态。',
+      sourceDoc: 'RoHS环保标准指引.docx',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r6', 
+      type: 'external', 
+      title: '有害物质清单 (SoP) 强控', 
+      desc: '核对物料 BMG (成分清单) 是否包含禁限物质', 
+      action: '物性对撞',
+      logic: '比对成分清单与 RoHS 6+10 物质限值。',
+      sourceDoc: 'RoHS环保标准指引.docx',
+      severity: '致命 (Blocking)'
+    },
+    { 
+      id: 'r3', 
+      type: 'internal', 
+      title: '命名规范逻辑检查', 
+      desc: '规则描述是否符合“品名+规格”的顺序', 
+      action: 'LLM 语义分析',
+      logic: '利用大模型对 MAKTX 字段进行语义分词。验证分词结构是否满足 [Noun] + [Spec] + [Material] 的排列模型。针对不匹配项给出修复建议。',
+      sourceDoc: '主数据命名规范_V3.pdf',
+      severity: '中危 (Medium)'
+    },
+    { 
+      id: 'r7', 
+      type: 'internal', 
+      title: '单位 (MEINS) 与描述逻辑匹配', 
+      desc: '检查基本计量单位是否与其物理属性（重量、长度、件数）一致', 
+      action: '逻辑推演',
+      logic: '若描述包含 "电缆", 单位应为 "M" 或 "FT"，而非 "EA"。若不符则标记为属性错乱。',
+      sourceDoc: '主数据命名规范_V3.pdf',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r4', 
+      type: 'internal', 
+      title: '图纸附件关联检查', 
+      desc: '核心生产物料是否有对应的图纸附件', 
+      action: '关联性校验',
+      logic: '查询 PLM 系统的物料关联清单 (EBOM)。若物料属性为 "Make" 且关联文档列表为空，则记录为完整性缺失。',
+      sourceDoc: '物料与图纸关联管理办法.docx',
+      severity: '警告 (Warning)'
+    }
+  ]);
+
+  const [selectedRule, setSelectedRule] = useState<any | null>(null);
+  const [filterDoc, setFilterDoc] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const filteredRules = filterDoc 
+    ? rules.filter(r => r.sourceDoc === filterDoc)
+    : rules;
+
   const handleSimulate = () => {
     setIsSimulating(true);
+    setFilterDoc(null); // Clear filter when simulating
     setTimeout(() => {
       setIsSimulating(false);
       setSimulationResult({
@@ -145,11 +219,18 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
                 </div>
                 <div className="mt-3 space-y-2">
                   {externalDocs.map(doc => (
-                    <div key={doc.id} className="p-2 border border-red-100 rounded bg-red-50/50 flex items-start gap-2">
-                      <FileText className="text-red-500 shrink-0 mt-0.5" size={14} />
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-slate-500">提取 {doc.rules} 条红线规则</p>
+                    <div 
+                      key={doc.id} 
+                      onClick={() => setFilterDoc(filterDoc === doc.name ? null : doc.name)}
+                      className={`p-2 border rounded transition-all cursor-pointer group ${filterDoc === doc.name ? 'border-red-500 bg-red-100/50 shadow-sm ring-1 ring-red-200' : 'border-red-100 bg-red-50/50 hover:border-red-300 hover:bg-red-50'}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <FileText className={`shrink-0 mt-0.5 transition-colors ${filterDoc === doc.name ? 'text-red-600' : 'text-red-500'}`} size={14} />
+                        <div className="flex-1 overflow-hidden">
+                          <p className={`text-xs font-bold truncate ${filterDoc === doc.name ? 'text-red-700' : 'text-slate-700'}`}>{doc.name}</p>
+                          <p className="text-[10px] text-red-600 font-medium group-hover:underline">点击查看提取的 {doc.rules} 条红线规则</p>
+                        </div>
+                        {filterDoc === doc.name && <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse mt-1.5" />}
                       </div>
                     </div>
                   ))}
@@ -182,11 +263,18 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
                 </div>
                 <div className="mt-3 space-y-2">
                   {internalDocs.map(doc => (
-                    <div key={doc.id} className="p-2 border border-amber-100 rounded bg-amber-50/50 flex items-start gap-2">
-                      <FileText className="text-amber-500 shrink-0 mt-0.5" size={14} />
-                      <div>
-                        <p className="text-xs font-medium text-slate-700 truncate">{doc.name}</p>
-                        <p className="text-[10px] text-slate-500">提取 {doc.rules} 条管理规则</p>
+                    <div 
+                      key={doc.id} 
+                      onClick={() => setFilterDoc(filterDoc === doc.name ? null : doc.name)}
+                      className={`p-2 border rounded transition-all cursor-pointer group ${filterDoc === doc.name ? 'border-amber-500 bg-amber-100/50 shadow-sm ring-1 ring-amber-200' : 'border-amber-100 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50'}`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <FileText className={`shrink-0 mt-0.5 transition-colors ${filterDoc === doc.name ? 'text-amber-600' : 'text-amber-500'}`} size={14} />
+                        <div className="flex-1 overflow-hidden">
+                          <p className={`text-xs font-bold truncate ${filterDoc === doc.name ? 'text-amber-700' : 'text-slate-700'}`}>{doc.name}</p>
+                          <p className="text-[10px] text-amber-600 font-medium group-hover:underline">点击查看提取的 {doc.rules} 条管理规则</p>
+                        </div>
+                        {filterDoc === doc.name && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse mt-1.5" />}
                       </div>
                     </div>
                   ))}
@@ -213,28 +301,100 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
                 <CheckCircle2 size={16} /> 确认应用规范
               </button>
             </div>
-            <div className="p-4 flex-1 overflow-y-auto space-y-3">
-              {rules.map((r, i) => (
-                <div key={r.id} className={`p-4 rounded-xl border bg-white shadow-sm flex items-start gap-3 ${r.type === 'external' ? 'border-red-200/60' : 'border-amber-200/60'}`}>
-                   {r.type === 'external' ? (
-                     <ShieldAlert size={18} className="text-red-500 shrink-0 mt-0.5" />
-                   ) : (
-                     <ShieldCheck size={18} className="text-amber-500 shrink-0 mt-0.5" />
-                   )}
-                   <div className="flex-1">
-                     <div className="flex items-center gap-2 mb-1">
-                       <span className="text-sm font-bold text-slate-800">{r.title}</span>
-                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${r.type === 'external' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
-                         {r.type === 'external' ? '外环规则 (External)' : '内环规则 (Internal)'}
-                       </span>
-                     </div>
-                     <p className="text-xs text-slate-600 mb-2">{r.desc}</p>
-                     <div className="text-[10px] text-slate-500 bg-slate-50 inline-flex px-2 py-1 rounded border border-slate-100">
-                       <span className="font-semibold mr-1">执行方式:</span> {r.action}
-                     </div>
-                   </div>
+            <div className="p-4 flex-1 overflow-y-auto space-y-3 relative">
+              {filteredRules.length > 0 ? (
+                filteredRules.map((r, i) => (
+                  <div 
+                    key={r.id} 
+                    onClick={() => setSelectedRule(r)}
+                    className={`p-4 rounded-xl border bg-white shadow-sm flex items-start gap-3 cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 ${selectedRule?.id === r.id ? 'ring-2 ring-blue-500 border-transparent' : r.type === 'external' ? 'border-red-200/60 hover:border-red-300' : 'border-amber-200/60 hover:border-amber-300'}`}
+                  >
+                    {r.type === 'external' ? (
+                      <ShieldAlert size={18} className="text-red-500 shrink-0 mt-0.5" />
+                    ) : (
+                      <ShieldCheck size={18} className="text-amber-500 shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-bold text-slate-800">{r.title}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${r.type === 'external' ? 'bg-red-50 text-red-600' : 'bg-amber-50 text-amber-600'}`}>
+                          {r.type === 'external' ? '外环规则 (External)' : '内环规则 (Internal)'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 mb-2">{r.desc}</p>
+                      <div className="text-[10px] text-slate-500 bg-slate-50 inline-flex px-2 py-1 rounded border border-slate-100">
+                        <span className="font-semibold mr-1">执行方式:</span> {r.action}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
+                  <AlertCircle size={32} className="mb-2 opacity-20" />
+                  <p className="text-xs">未找到该文档关联的规则</p>
                 </div>
-              ))}
+              )}
+
+              {/* Rule Detail Overlay */}
+              {selectedRule && (
+                <div className="absolute inset-0 z-20 bg-white animate-in slide-in-from-right duration-300 flex flex-col">
+                  <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <div className="flex items-center gap-3">
+                       <button 
+                        onClick={() => setSelectedRule(null)}
+                        className="p-1 hover:bg-slate-200 rounded-lg text-slate-500"
+                       >
+                        <Play size={16} className="rotate-180 fill-slate-500" />
+                       </button>
+                       <h4 className="font-bold text-slate-800">规则详情 (Rule Detail)</h4>
+                    </div>
+                    <button onClick={() => setSelectedRule(null)}>
+                      <X size={18} className="text-slate-400 hover:text-slate-600" />
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-6">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">规则名称 / Title</div>
+                      <div className="text-lg font-bold text-slate-800">{selectedRule.title}</div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">等级 / Severity</div>
+                        <div className={`text-xs font-bold ${selectedRule.type === 'external' ? 'text-red-600' : 'text-amber-600'}`}>{selectedRule.severity}</div>
+                      </div>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">执行方式 / Action</div>
+                        <div className="text-xs font-bold text-slate-700">{selectedRule.action}</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">逻辑说明 / Logic & Methodology</div>
+                      <div className="p-4 bg-slate-900 rounded-xl text-slate-300 text-sm leading-relaxed font-mono">
+                        {selectedRule.logic}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 text-emerald-600">溯源依据 / Evidence Source</div>
+                      <div className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl border border-emerald-100">
+                        <FileSignature size={18} className="text-emerald-500" />
+                        <div className="text-xs font-medium text-emerald-800">{selectedRule.sourceDoc}</div>
+                        <button className="ml-auto text-[10px] font-bold text-emerald-600 hover:underline">查看原文</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-auto p-4 border-t border-slate-100 flex justify-end">
+                    <button 
+                      onClick={() => setSelectedRule(null)}
+                      className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-700 transition-colors"
+                    >
+                      返回列表
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

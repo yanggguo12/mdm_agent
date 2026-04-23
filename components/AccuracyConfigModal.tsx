@@ -23,12 +23,58 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([
-    { id: '1', name: '物料主数据规范_v2.pdf', rules: 45, constraints: 12 }
+    { 
+      id: '1', 
+      name: '物料主数据规范_v2.pdf', 
+      mappings: [
+        { 
+          id: 'm1', 
+          name: '物料类型-评估类映射', 
+          type: 'mapping', 
+          logic: 'MTART="ROH" -> BKLAS="3000"',
+          config: { ifField: 'MTART', ifValue: 'ROH', thenField: 'BKLAS', thenOperator: 'IN', thenValue: '[3000]' }
+        },
+        { 
+          id: 'm2', 
+          name: '物料组-利润中心映射', 
+          type: 'mapping', 
+          logic: 'MATKL="1001" -> PRCTR="P100"',
+          config: { ifField: 'MATKL', ifValue: '1001', thenField: 'PRCTR', thenOperator: '==', thenValue: 'P100' }
+        }
+      ], 
+      constraints: [
+        { 
+          id: 'c1', 
+          name: '重量逻辑约束', 
+          type: 'physical', 
+          logic: 'Net Weight < Gross Weight',
+          config: { fieldA: 'NTGEW', operator: '<', fieldB: 'BRGEW' }
+        },
+        { 
+          id: 'c2', 
+          name: '长度正值约束', 
+          type: 'physical', 
+          logic: 'Length > 0',
+          config: { fieldA: 'LAENG', operator: '>', fieldB: '0' }
+        }
+      ]
+    }
   ]);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
+  const selectedFile = uploadedFiles.find(f => f.id === selectedFileId);
+
+  const importExtractedRule = (rule: any) => {
+    setRules([...rules, { 
+      id: `ai-${Date.now()}-${rule.id}`, 
+      type: rule.type, 
+      name: `[AI提炼] ${rule.name}`, 
+      config: { ...rule.config } 
+    }]);
+  };
   const handleSimulate = () => {
     setIsSimulating(true);
     setTimeout(() => {
@@ -172,17 +218,83 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
                 )}
               </div>
 
-              <div className="mt-6 space-y-3">
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">已解析的知识库</h4>
-                {uploadedFiles.map(file => (
-                  <div key={file.id} className="p-3 border border-slate-100 rounded-lg bg-slate-50 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                    <FileText className="text-emerald-500 shrink-0 mt-0.5" size={16} />
-                    <div>
-                      <p className="text-sm font-medium text-slate-700 truncate max-w-[200px]" title={file.name}>{file.name}</p>
-                      <p className="text-xs text-slate-500 mt-1">已提取 {file.rules} 条映射关系, {file.constraints} 条数值约束</p>
+              <div className="mt-6 flex-1 flex flex-col min-h-0">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">已解析的知识库</h4>
+                <div className="space-y-3 overflow-y-auto pr-1">
+                  {uploadedFiles.map(file => (
+                    <div 
+                      key={file.id} 
+                      onClick={() => setSelectedFileId(selectedFileId === file.id ? null : file.id)}
+                      className={`p-3 border rounded-xl transition-all cursor-pointer group ${
+                        selectedFileId === file.id 
+                          ? 'border-blue-500 bg-blue-50/50 shadow-sm ring-1 ring-blue-100' 
+                          : 'border-slate-100 bg-slate-50/50 hover:bg-white hover:border-blue-200 hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <FileText className={`shrink-0 mt-0.5 ${selectedFileId === file.id ? 'text-blue-600' : 'text-emerald-500'}`} size={16} />
+                        <div className="flex-1 overflow-hidden">
+                          <p className={`text-sm font-bold truncate ${selectedFileId === file.id ? 'text-blue-700' : 'text-slate-700'}`}>{file.name}</p>
+                          <p className="text-[10px] text-slate-500 mt-1">已提取 {file.mappings.length} 条映射关系, {file.constraints.length} 条数值约束</p>
+                          <p className="text-[10px] text-blue-600 font-medium mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity text-right">
+                             {selectedFileId === file.id ? '点击收起' : '点击查看提炼详情'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* AI Extracted Items Detail */}
+                      {selectedFileId === file.id && (
+                        <div className="mt-4 pt-4 border-t border-blue-100 space-y-4 animate-in fade-in slide-in-from-top-2">
+                          {/* Mappings */}
+                          {file.mappings.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">映射关系 (Mappings)</p>
+                              <div className="space-y-1.5">
+                                {file.mappings.map(m => (
+                                  <div key={m.id} className="p-2 bg-white rounded-lg border border-blue-50 flex items-center justify-between group/item hover:border-blue-200 transition-colors">
+                                    <div className="flex-1 min-w-0 pr-2">
+                                      <div className="text-[11px] font-bold text-slate-700 truncate">{m.name}</div>
+                                      <div className="text-[9px] text-blue-600 font-mono mt-0.5 truncate">{m.logic}</div>
+                                    </div>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); importExtractedRule(m); }}
+                                      className="p-1 px-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-all text-[10px] font-bold flex items-center gap-1 shadow-sm"
+                                    >
+                                      <Plus size={10} /> 导入
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Constraints */}
+                          {file.constraints.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter">数值约束 (Constraints)</p>
+                              <div className="space-y-1.5">
+                                {file.constraints.map(c => (
+                                  <div key={c.id} className="p-2 bg-white rounded-lg border border-blue-50 flex items-center justify-between group/item hover:border-blue-200 transition-colors">
+                                    <div className="flex-1 min-w-0 pr-2">
+                                      <div className="text-[11px] font-bold text-slate-700 truncate">{c.name}</div>
+                                      <div className="text-[9px] text-blue-600 font-mono mt-0.5 truncate">{c.logic}</div>
+                                    </div>
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); importExtractedRule(c); }}
+                                      className="p-1 px-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-600 hover:text-white transition-all text-[10px] font-bold flex items-center gap-1 shadow-sm"
+                                    >
+                                      <Plus size={10} /> 导入
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -271,6 +383,7 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
                                 <option value="BRGEW">BRGEW (毛重)</option>
                                 <option value="NTGEW">NTGEW (净重)</option>
                                 <option value="LAENG">LAENG (长度)</option>
+                                <option value="0">固定值: 0</option>
                               </select>
                             </div>
                           )}
