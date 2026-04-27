@@ -30,6 +30,12 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
   const [isTrendModalOpen, setIsTrendModalOpen] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [metric?.name]);
 
   const handleRunRule = () => {
     setIsCalculating(true);
@@ -322,15 +328,20 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
             {/* Sample Bad Records */}
             {details.sampleBadRecords && details.sampleBadRecords.length > 0 && (
               <div>
-                <h3 className="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <Database size={16} className="text-slate-500" />
-                  异常数据抽样 (Sample Anomalies)
-                </h3>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Database size={16} className="text-slate-500" />
+                    异常数据抽样 (Sample Anomalies)
+                  </h3>
+                  <div className="text-[10px] text-slate-400 font-medium">
+                    显示 {Math.min((currentPage - 1) * PAGE_SIZE + 1, details.sampleBadRecords.length)} - {Math.min(currentPage * PAGE_SIZE, details.sampleBadRecords.length)} 条，总计 {details.sampleBadRecords.length} 条
+                  </div>
+                </div>
                 <div className="overflow-auto max-h-[400px] border border-slate-200 rounded-xl">
                   <table className="w-full text-left text-xs text-slate-600 whitespace-nowrap">
                     <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 sticky top-0 z-10">
                       <tr>
-                        <th className="px-4 py-2 font-semibold w-12">序号</th>
+                        <th className="px-4 py-2 font-semibold w-12 text-center">序号</th>
                         {details.sampleColumns ? (
                           details.sampleColumns.map((col, idx) => (
                             <th key={idx} className="px-4 py-2 font-semibold">{col.key} ({col.label})</th>
@@ -349,9 +360,9 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {details.sampleBadRecords.map((record, idx) => (
+                      {details.sampleBadRecords.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE).map((record, idx) => (
                         <tr key={idx} className={getRowClassName(record)}>
-                          <td className="px-4 py-2 text-slate-400 font-mono">{idx + 1}</td>
+                          <td className="px-4 py-2 text-slate-400 font-mono text-center">{(currentPage - 1) * PAGE_SIZE + idx + 1}</td>
                           {details.sampleColumns ? (
                             details.sampleColumns.map((col, colIdx) => {
                               const val = record[col.key];
@@ -395,6 +406,45 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {details.sampleBadRecords.length > PAGE_SIZE && (
+                  <div className="mt-3 flex items-center justify-center gap-1">
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                      className="p-1 px-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    >
+                      上一页
+                    </button>
+                    {Array.from({ length: Math.min(5, Math.ceil(details.sampleBadRecords.length / PAGE_SIZE)) }).map((_, i) => {
+                      const totalPages = Math.ceil(details.sampleBadRecords.length / PAGE_SIZE);
+                      let pageNum = i + 1;
+                      if (totalPages > 5 && currentPage > 3) {
+                        pageNum = currentPage - 3 + i + 1;
+                        if (pageNum > totalPages) pageNum = totalPages - (4 - i);
+                      }
+                      if (pageNum > totalPages) return null;
+                      
+                      return (
+                        <button 
+                          key={pageNum}
+                          onClick={() => setCurrentPage(pageNum)}
+                          className={`w-7 h-7 flex items-center justify-center text-xs font-bold rounded-lg transition-all ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100'}`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                    <button 
+                      onClick={() => setCurrentPage(prev => Math.min(Math.ceil(details.sampleBadRecords.length / PAGE_SIZE), prev + 1))}
+                      disabled={currentPage === Math.ceil(details.sampleBadRecords.length / PAGE_SIZE)}
+                      className="p-1 px-2 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded-lg disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
