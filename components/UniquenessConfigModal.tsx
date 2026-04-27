@@ -210,7 +210,7 @@ export const UniquenessConfigModal: React.FC<UniquenessConfigModalProps> = ({
               className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200"
             >
               <Save size={16} />
-              保存并重新计算
+              保存配置
             </button>
           </div>
         </div>

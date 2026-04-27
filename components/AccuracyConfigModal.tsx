@@ -352,22 +352,22 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
                         </div>
                         
                         {/* Configuration UI based on type */}
-                        <div className="pl-7 space-y-2">
+                         <div className="pl-6 space-y-1">
                           {rule.type === 'physical' && (
-                            <div className="flex items-center gap-2 text-sm">
+                            <div className="flex items-center gap-1.5 text-xs">
                               <select 
                                 value={rule.config.fieldA} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, fieldA: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500 text-[11px]"
                               >
-                                <option value="NTGEW">NTGEW (净重)</option>
-                                <option value="BRGEW">BRGEW (毛重)</option>
-                                <option value="LAENG">LAENG (长度)</option>
+                                <option value="NTGEW">NTGEW</option>
+                                <option value="BRGEW">BRGEW</option>
+                                <option value="LAENG">LAENG</option>
                               </select>
                               <select 
                                 value={rule.config.operator} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, operator: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 font-mono focus:outline-none focus:ring-1 focus:ring-blue-500 text-[11px]"
                               >
                                 <option value="<">&lt;</option>
                                 <option value=">">&gt;</option>
@@ -378,46 +378,46 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
                               <select 
                                 value={rule.config.fieldB} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, fieldB: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-blue-500 text-[11px]"
                               >
-                                <option value="BRGEW">BRGEW (毛重)</option>
-                                <option value="NTGEW">NTGEW (净重)</option>
-                                <option value="LAENG">LAENG (长度)</option>
-                                <option value="0">固定值: 0</option>
+                                <option value="BRGEW">BRGEW</option>
+                                <option value="NTGEW">NTGEW</option>
+                                <option value="LAENG">LAENG</option>
+                                <option value="0">0</option>
                               </select>
                             </div>
                           )}
                           {rule.type === 'mapping' && (
-                            <div className="flex items-center gap-2 text-sm flex-wrap">
-                              <span className="text-indigo-600 font-mono font-bold">IF</span>
+                            <div className="flex items-center gap-1 text-[11px] whitespace-nowrap overflow-x-auto no-scrollbar py-0.5">
+                              <span className="text-indigo-600 font-mono font-black shrink-0">IF</span>
                               <select 
                                 value={rule.config.ifField} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, ifField: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[11px]"
                               >
-                                <option value="MTART">MTART (物料类型)</option>
-                                <option value="MATKL">MATKL (物料组)</option>
+                                <option value="MTART">MTART</option>
+                                <option value="MATKL">MATKL</option>
                               </select>
-                              <span className="text-slate-500">==</span>
+                              <span className="text-slate-400 font-mono">==</span>
                               <input 
                                 type="text" 
                                 value={rule.config.ifValue} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, ifValue: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 w-20 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                className="border border-slate-200 rounded px-1 py-0.5 w-12 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[11px]" 
                               />
-                              <span className="text-indigo-600 font-mono font-bold">THEN</span>
+                              <span className="text-indigo-600 font-mono font-black shrink-0 ml-0.5">THEN</span>
                               <select 
                                 value={rule.config.thenField} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, thenField: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[11px]"
                               >
-                                <option value="BKLAS">BKLAS (评估类)</option>
-                                <option value="MTART">MTART (物料类型)</option>
+                                <option value="BKLAS">BKLAS</option>
+                                <option value="MTART">MTART</option>
                               </select>
                               <select 
                                 value={rule.config.thenOperator} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, thenOperator: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="border border-slate-200 rounded px-1 py-0.5 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[11px] font-bold text-indigo-600"
                               >
                                 <option value="IN">IN</option>
                                 <option value="==">==</option>
@@ -427,7 +427,7 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
                                 type="text" 
                                 value={rule.config.thenValue} 
                                 onChange={e => updateRuleConfig(rule.id, { ...rule.config, thenValue: e.target.value })}
-                                className="border border-slate-200 rounded px-2 py-1 w-28 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" 
+                                className="border border-slate-200 rounded px-1 py-0.5 w-20 bg-slate-50 focus:outline-none focus:ring-1 focus:ring-indigo-500 text-[11px]" 
                               />
                             </div>
                           )}
@@ -563,7 +563,7 @@ export const AccuracyConfigModal: React.FC<AccuracyConfigModalProps> = ({ isOpen
             onClick={() => { onSave(rules); onClose(); }}
             className="px-6 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
           >
-            保存并应用规则
+            保存配置
           </button>
         </div>
       </div>

@@ -166,15 +166,16 @@ export const processData = (
   completenessKeyFields: string[], 
   uniquenessKeyFields: string[] = ['MAKTX'],
   selectedCategories: string[] = ['基础数据MARA'],
-  complianceRules: any[] = [] // New parameter for compliance rules
+  complianceRules: any[] = [],
+  customWeights?: Record<string, number>
 ) => {
   if (selectedCategories.length === 0) {
     const now = new Date().toLocaleString();
     const emptyMetrics: HealthMetric[] = [
-      { name: '完整性 (Completeness)', score: 0, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
-      { name: '唯一性 (Uniqueness)', score: 0, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
-      { name: '准确性 (Accuracy)', score: 0, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
-      { name: '合规性 (Compliance)', score: 0, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } }
+      { name: '完整性 (Completeness)', score: 0, weight: customWeights?.['完整性'] || 30, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
+      { name: '唯一性 (Uniqueness)', score: 0, weight: customWeights?.['唯一性'] || 30, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
+      { name: '准确性 (Accuracy)', score: 0, weight: customWeights?.['准确性'] || 20, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } },
+      { name: '合规性 (Compliance)', score: 0, weight: customWeights?.['合规性'] || 20, trend: 'stable', color: '#94a3b8', calculationDetails: { formula: '-', description: '请选择数据类别', numerator: { label: '-', value: 0 }, denominator: { label: '-', value: 0 }, dataSources: [], lastCalculated: now } }
     ];
     return { metrics: emptyMetrics, issues: [] };
   }
@@ -365,6 +366,7 @@ export const processData = (
     {
       name: '完整性 (Completeness)',
       score: completenessScore,
+      weight: customWeights?.['完整性'] || 30,
       trend: completenessScore >= 90 ? 'up' : 'down',
       color: '#3b82f6',
       calculationDetails: {
@@ -385,6 +387,7 @@ export const processData = (
     {
       name: '唯一性 (Uniqueness)',
       score: uniquenessScore,
+      weight: customWeights?.['唯一性'] || 30,
       trend: uniquenessScore >= 90 ? 'stable' : 'down',
       color: '#10b981',
       calculationDetails: {
@@ -408,6 +411,7 @@ export const processData = (
     {
       name: '准确性 (Accuracy)',
       score: accuracyScore,
+      weight: customWeights?.['准确性'] || 20,
       trend: accuracyScore >= 90 ? 'up' : 'down',
       color: '#f59e0b',
       calculationDetails: {
@@ -429,6 +433,7 @@ export const processData = (
     {
       name: '合规性 (Compliance)',
       score: complianceScore,
+      weight: customWeights?.['合规性'] || 20,
       trend: complianceScore >= 90 ? 'stable' : 'down',
       color: '#8b5cf6',
       calculationDetails: {

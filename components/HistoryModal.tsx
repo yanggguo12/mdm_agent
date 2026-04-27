@@ -38,7 +38,7 @@ export const HistoryModal: React.FC<HistoryModalProps> = ({ isOpen, onClose, his
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-800 tracking-tight">扫描历史记录 (Scan History)</h2>
-                  <p className="text-sm text-slate-500">查看及加载过往的健康体检报告</p>
+                  <p className="text-sm text-slate-500">查看及加载过往的健康体检报告 • 加权平均公式: 3:3:2:2</p>
                 </div>
               </div>
               <button 

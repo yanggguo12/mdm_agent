@@ -15,9 +15,10 @@ import { ComplianceConfigModal } from './components/ComplianceConfigModal';
 import { RepairDetailsModal } from './components/RepairDetailsModal';
 import { IssueDetailsModal } from './components/IssueDetailsModal';
 import { HistoryModal } from './components/HistoryModal';
+import { WeightConfigModal } from './components/WeightConfigModal';
 import { generateAndProcessData, processData } from './utils/dataProcessor';
 import { DataIssue, HealthMetric, ScanHistoryItem } from './types';
-import { Play, RotateCcw, ShieldCheck, Zap, Activity, ChevronDown, Check } from 'lucide-react';
+import { Play, RotateCcw, ShieldCheck, Zap, Activity, ChevronDown, Check, Scale } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const DATA_CATEGORIES = {
@@ -42,7 +43,14 @@ const App = () => {
   const [isUniquenessConfigModalOpen, setIsUniquenessConfigModalOpen] = useState(false);
   const [isAccuracyConfigModalOpen, setIsAccuracyConfigModalOpen] = useState(false);
   const [isComplianceConfigModalOpen, setIsComplianceConfigModalOpen] = useState(false);
+  const [isWeightModalOpen, setIsWeightModalOpen] = useState(false);
   const [complianceRules, setComplianceRules] = useState<any[]>([]);
+  const [metricWeights, setMetricWeights] = useState<Record<string, number>>({
+    '完整性': 30,
+    '唯一性': 30,
+    '准确性': 20,
+    '合规性': 20
+  });
   const [repairModalConfig, setRepairModalConfig] = useState<{ id: string, title: string, type: 'success' | 'warning' | 'info' } | null>(null);
   const [selectedIssue, setSelectedIssue] = useState<DataIssue | null>(null);
   
@@ -86,21 +94,23 @@ const App = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Update metrics and issues when selected categories change
+  // Update metrics and issues when selected categories or data change
   useEffect(() => {
-    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, uniquenessKeyFields, selectedCategories, complianceRules);
+    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, uniquenessKeyFields, selectedCategories, complianceRules, metricWeights);
     setMetrics(newMetrics);
     setIssues(newIssues);
-  }, [selectedCategories, appData.data, completenessKeyFields, uniquenessKeyFields, complianceRules]);
+    // Only auto-run on category change or data change
+  }, [selectedCategories, appData.data]);
   
   // Context string for AI
   const [contextData, setContextData] = useState('');
 
   // Update context when data changes
   useEffect(() => {
+    const overallScore = Math.round(metrics.reduce((acc, m) => acc + (m.score * (m.weight || 25) / 100), 0));
     const context = `
-      Overall Score: ${Math.round(metrics.reduce((acc, m) => acc + m.score, 0) / metrics.length)}/100.
-      Metrics: ${metrics.map(m => `${m.name}: ${m.score}`).join(', ')}.
+      Overall Score: ${overallScore}/100.
+      Metrics: ${metrics.map(m => `${m.name}: ${m.score} (weight: ${m.weight}%)`).join(', ')}.
       Open Issues: ${issues.filter(i => i.status !== 'Fixed').length}.
       Top Issues: ${issues.map(i => `${i.type} in ${i.table} (${i.field})`).join('; ')}.
     `;
@@ -149,7 +159,7 @@ const App = () => {
       const newHistoryItem: ScanHistoryItem = {
         id: `h-${Date.now()}`,
         timestamp,
-        overallScore: Math.round(newMetrics.reduce((acc, m) => acc + m.score, 0) / newMetrics.length),
+        overallScore: Math.round(newMetrics.reduce((acc, m) => acc + (m.score * (m.weight || 25) / 100), 0)),
         category: selectedCategories.join(', '),
         metrics: JSON.parse(JSON.stringify(newMetrics)),
         issues: JSON.parse(JSON.stringify(issues))
@@ -305,6 +315,13 @@ const App = () => {
               </div>
               <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
                   <button 
+                    onClick={() => setIsWeightModalOpen(true)}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
+                  >
+                      <Scale size={16} />
+                      权重
+                  </button>
+                  <button 
                     onClick={() => setIsHistoryModalOpen(true)}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
                   >
@@ -456,6 +473,11 @@ const App = () => {
               onOpenUniquenessConfig={() => setIsUniquenessConfigModalOpen(true)}
               onOpenAccuracyConfig={() => setIsAccuracyConfigModalOpen(true)}
               onOpenComplianceConfig={() => setIsComplianceConfigModalOpen(true)}
+              onRefresh={() => {
+                const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, uniquenessKeyFields, selectedCategories, complianceRules, metricWeights);
+                setMetrics(newMetrics);
+                setIssues(newIssues);
+              }}
             />
 
             <RawDataModal
@@ -489,6 +511,13 @@ const App = () => {
               isOpen={isComplianceConfigModalOpen}
               onClose={() => setIsComplianceConfigModalOpen(false)}
               onSave={handleSaveComplianceConfig}
+            />
+
+            <WeightConfigModal
+              isOpen={isWeightModalOpen}
+              onClose={() => setIsWeightModalOpen(false)}
+              currentWeights={metricWeights}
+              onSave={(newWeights) => setMetricWeights(newWeights)}
             />
 
             <RepairDetailsModal

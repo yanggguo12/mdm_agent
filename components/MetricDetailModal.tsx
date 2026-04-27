@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { HealthMetric } from '../types';
-import { X, Calculator, Database, Clock, Info, ExternalLink, Settings, TrendingUp } from 'lucide-react';
+import { X, Calculator, Database, Clock, Info, ExternalLink, Settings, TrendingUp, Play } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { TrendChartModal } from './TrendChartModal';
 
 interface MetricDetailModalProps {
@@ -12,10 +13,43 @@ interface MetricDetailModalProps {
   onOpenUniquenessConfig?: () => void;
   onOpenAccuracyConfig?: () => void;
   onOpenComplianceConfig?: () => void;
+  onRefresh?: () => void;
 }
 
-export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, onClose, metric, onViewRawData, onOpenConfig, onOpenUniquenessConfig, onOpenAccuracyConfig, onOpenComplianceConfig }) => {
+export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  metric, 
+  onViewRawData, 
+  onOpenConfig, 
+  onOpenUniquenessConfig, 
+  onOpenAccuracyConfig, 
+  onOpenComplianceConfig,
+  onRefresh
+}) => {
   const [isTrendModalOpen, setIsTrendModalOpen] = useState(false);
+  const [isCalculating, setIsCalculating] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const handleRunRule = () => {
+    setIsCalculating(true);
+    setProgress(0);
+    
+    // Simulate calculation progress
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            setIsCalculating(false);
+            onRefresh?.();
+          }, 500);
+          return 100;
+        }
+        return prev + Math.floor(Math.random() * 15) + 5;
+      });
+    }, 150);
+  };
 
   const groupColors = ['bg-blue-50/60', 'bg-emerald-50/60', 'bg-amber-50/60', 'bg-purple-50/60', 'bg-rose-50/60'];
   const uniqueGroups = React.useMemo(() => {
@@ -50,7 +84,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
               </div>
               <div className="flex flex-wrap items-center gap-2 sm:ml-2">
                 {metric.name.includes('完整性') && (
-                  <>
+                  <div className="flex items-center gap-2">
                     {onOpenConfig && (
                       <button 
                         onClick={onOpenConfig}
@@ -60,15 +94,22 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
                       </button>
                     )}
                     <button 
+                      onClick={handleRunRule}
+                      disabled={isCalculating}
+                      className="px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      <Play size={14} fill="currentColor" /> {isCalculating ? '运行中...' : '运行规则'}
+                    </button>
+                    <button 
                       onClick={() => setIsTrendModalOpen(true)}
                       className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                       <TrendingUp size={14} /> 趋势图
                     </button>
-                  </>
+                  </div>
                 )}
                 {metric.name.includes('唯一性') && (
-                  <>
+                  <div className="flex items-center gap-2">
                     {onOpenUniquenessConfig && (
                       <button 
                         onClick={onOpenUniquenessConfig}
@@ -78,15 +119,22 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
                       </button>
                     )}
                     <button 
+                      onClick={handleRunRule}
+                      disabled={isCalculating}
+                      className="px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      <Play size={14} fill="currentColor" /> {isCalculating ? '运行中...' : '运行规则'}
+                    </button>
+                    <button 
                       onClick={() => setIsTrendModalOpen(true)}
                       className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                       <TrendingUp size={14} /> 趋势图
                     </button>
-                  </>
+                  </div>
                 )}
                 {metric.name.includes('准确性') && (
-                  <>
+                  <div className="flex items-center gap-2">
                     {onOpenAccuracyConfig && (
                       <button 
                         onClick={onOpenAccuracyConfig}
@@ -96,15 +144,22 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
                       </button>
                     )}
                     <button 
+                      onClick={handleRunRule}
+                      disabled={isCalculating}
+                      className="px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      <Play size={14} fill="currentColor" /> {isCalculating ? '运行中...' : '运行规则'}
+                    </button>
+                    <button 
                       onClick={() => setIsTrendModalOpen(true)}
                       className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                       <TrendingUp size={14} /> 趋势图
                     </button>
-                  </>
+                  </div>
                 )}
                 {metric.name.includes('合规性') && (
-                  <>
+                  <div className="flex items-center gap-2">
                     {onOpenComplianceConfig && (
                       <button 
                         onClick={onOpenComplianceConfig}
@@ -114,12 +169,19 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
                       </button>
                     )}
                     <button 
+                      onClick={handleRunRule}
+                      disabled={isCalculating}
+                      className="px-3 py-1.5 bg-white border border-indigo-200 rounded-lg text-xs font-bold text-indigo-600 hover:bg-indigo-50 flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                    >
+                      <Play size={14} fill="currentColor" /> {isCalculating ? '运行中...' : '运行规则'}
+                    </button>
+                    <button 
                       onClick={() => setIsTrendModalOpen(true)}
                       className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-1.5 shadow-sm transition-colors"
                     >
                       <TrendingUp size={14} /> 趋势图
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
             </div>
@@ -132,7 +194,65 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6 overflow-y-auto">
+          <div className="p-6 space-y-6 overflow-y-auto relative">
+            {/* Calculation Overlay */}
+            <AnimatePresence>
+              {isCalculating && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 z-40 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center p-12"
+                >
+                  <motion.div 
+                    initial={{ scale: 0.8 }}
+                    animate={{ scale: 1 }}
+                    className="w-full max-w-md space-y-6 text-center"
+                  >
+                    <div className="relative w-24 h-24 mx-auto mb-4">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle
+                          cx="48"
+                          cy="48"
+                          r="44"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          className="text-slate-100"
+                        />
+                        <motion.circle
+                          cx="48"
+                          cy="48"
+                          r="44"
+                          stroke="currentColor"
+                          strokeWidth="8"
+                          fill="transparent"
+                          strokeDasharray={276.46}
+                          initial={{ strokeDashoffset: 276.46 }}
+                          animate={{ strokeDashoffset: 276.46 * (1 - progress / 100) }}
+                          className="text-indigo-500"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-xl font-black text-slate-800">{progress}%</span>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-slate-800 mb-2">正在执行数据诊断</h3>
+                      <p className="text-xs text-slate-500">正在遍历扫描数据源，应用最新规则逻辑...</p>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-indigo-500"
+                        animate={{ width: `${progress}%` }}
+                      />
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {/* Description */}
             <div className="flex gap-3 text-slate-600 bg-slate-50 p-4 rounded-xl border border-slate-100">
               <Info className="flex-shrink-0 text-blue-500 mt-0.5" size={18} />
@@ -168,7 +288,10 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({ isOpen, on
                 </div>
                 
                 <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-600">最终得分</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium text-slate-600">指标得分 / 权重</span>
+                    <span className="text-[10px] text-slate-400 font-mono italic">该指标在总分中占比: {metric.weight}%</span>
+                  </div>
                   <span className="text-2xl font-extrabold" style={{ color: metric.color }}>
                     {metric.score}<span className="text-lg opacity-70">%</span>
                   </span>

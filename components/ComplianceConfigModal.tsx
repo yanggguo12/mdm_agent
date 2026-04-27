@@ -298,7 +298,7 @@ export const ComplianceConfigModal: React.FC<ComplianceConfigModalProps> = ({ is
                 onClick={() => onSave(rules)}
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-colors shadow-sm flex items-center gap-2"
               >
-                <CheckCircle2 size={16} /> 确认应用规范
+                <CheckCircle2 size={16} /> 保存配置
               </button>
             </div>
             <div className="p-4 flex-1 overflow-y-auto space-y-3 relative">

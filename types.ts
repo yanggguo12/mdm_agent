@@ -31,6 +31,7 @@ export interface DataIssue {
 export interface HealthMetric {
   name: string;
   score: number;
+  weight?: number;
   trend: 'up' | 'down' | 'stable';
   color: string;
   calculationDetails?: {
