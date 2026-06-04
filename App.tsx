@@ -16,9 +16,10 @@ import { RepairDetailsModal } from './components/RepairDetailsModal';
 import { IssueDetailsModal } from './components/IssueDetailsModal';
 import { HistoryModal } from './components/HistoryModal';
 import { WeightConfigModal } from './components/WeightConfigModal';
+import { MobileView } from './components/MobileView';
 import { generateAndProcessData, processData } from './utils/dataProcessor';
 import { DataIssue, HealthMetric, ScanHistoryItem } from './types';
-import { Play, RotateCcw, ShieldCheck, Zap, Activity, ChevronDown, Check, Scale } from 'lucide-react';
+import { Play, RotateCcw, ShieldCheck, Zap, Activity, ChevronDown, Check, Scale, Smartphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 const DATA_CATEGORIES = {
@@ -28,6 +29,14 @@ const DATA_CATEGORIES = {
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
+
+  // Detect mobile view on mount
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setViewMode('mobile');
+    }
+  }, []);
   // Generate 1000 mock records and calculate metrics/issues on initial load
   const [appData, setAppData] = useState(() => generateAndProcessData(1000));
   
@@ -38,7 +47,7 @@ const App = () => {
   const [selectedMetric, setSelectedMetric] = useState<HealthMetric | null>(null);
   const [rawDataSource, setRawDataSource] = useState<string | null>(null);
   const [completenessKeyFields, setCompletenessKeyFields] = useState<string[]>(['MATKL']);
-  const [uniquenessKeyFields, setUniquenessKeyFields] = useState<string[]>(['MAKTX']);
+  const [uniquenessKeyFields, setUniquenessKeyFields] = useState<string[][]>([['MAKTX'], ['ZEINR', 'ZEIVR']]);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isUniquenessConfigModalOpen, setIsUniquenessConfigModalOpen] = useState(false);
   const [isAccuracyConfigModalOpen, setIsAccuracyConfigModalOpen] = useState(false);
@@ -108,14 +117,34 @@ const App = () => {
   // Update context when data changes
   useEffect(() => {
     const overallScore = Math.round(metrics.reduce((acc, m) => acc + (m.score * (m.weight || 25) / 100), 0));
+    const activeIssues = issues.filter(i => i.status !== 'Fixed');
+    
+    // Group issues by type for a concise summary
+    const issueSummary = activeIssues.reduce((acc, issue) => {
+      acc[issue.type] = (acc[issue.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
     const context = `
-      Overall Score: ${overallScore}/100.
-      Metrics: ${metrics.map(m => `${m.name}: ${m.score} (weight: ${m.weight}%)`).join(', ')}.
-      Open Issues: ${issues.filter(i => i.status !== 'Fixed').length}.
-      Top Issues: ${issues.map(i => `${i.type} in ${i.table} (${i.field})`).join('; ')}.
+      [SYSTEM STATUS]
+      Health Score: ${overallScore}/100
+      Selected Categories: ${selectedCategories.join(', ')}
+      
+      [RULES CONFIGURATION]
+      - Completeness Key Fields: ${completenessKeyFields.join(', ')}
+      - Uniqueness Rules: ${uniquenessKeyFields.map(group => `[${group.join(' + ')}]`).join(', ')}
+      - Compliance Rules Count: ${complianceRules.length}
+      
+      [DATA ISSUES]
+      - Total Active Issues: ${activeIssues.length}
+      - Issue Distribution: ${Object.entries(issueSummary).map(([type, count]) => `${type}: ${count}`).join(', ')}
+      - Recent Examples: ${activeIssues.slice(0, 5).map(i => `${i.type} in ${i.field} (${i.table})`).join('; ')}
+
+      [ACTIONABLE ADVICE]
+      The user is currently managing data quality. Help them understand these specific issues and how to fix them or adjust rules.
     `;
     setContextData(context);
-  }, [metrics, issues]);
+  }, [metrics, issues, completenessKeyFields, uniquenessKeyFields, selectedCategories, complianceRules]);
 
   const handleCategoryToggle = (majorCat: string, subCat: string) => {
     setSelectedCategories(prev => {
@@ -197,7 +226,7 @@ const App = () => {
 
   const handleSaveConfig = (fields: string[]) => {
     setCompletenessKeyFields(fields);
-    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, fields, uniquenessKeyFields, selectedCategories);
+    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, fields, uniquenessKeyFields, selectedCategories, complianceRules, metricWeights);
     setMetrics(newMetrics);
     setIssues(newIssues);
     setIsConfigModalOpen(false);
@@ -207,9 +236,9 @@ const App = () => {
     }
   };
 
-  const handleSaveUniquenessConfig = (fields: string[]) => {
+  const handleSaveUniquenessConfig = (fields: string[][]) => {
     setUniquenessKeyFields(fields);
-    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, fields, selectedCategories);
+    const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, fields, selectedCategories, complianceRules, metricWeights);
     setMetrics(newMetrics);
     setIssues(newIssues);
     setIsUniquenessConfigModalOpen(false);
@@ -242,8 +271,49 @@ const App = () => {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
         >
-          <Login onLogin={() => setIsLoggedIn(true)} />
+          <Login 
+            onLogin={() => setIsLoggedIn(true)} 
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
         </motion.div>
+      ) : viewMode === 'mobile' ? (
+        <>
+          <MobileView
+            metrics={metrics}
+            issues={issues}
+            scanStep={scanStep}
+            selectedCategories={selectedCategories}
+            completenessKeyFields={completenessKeyFields}
+            uniquenessKeyFields={uniquenessKeyFields}
+            complianceRules={complianceRules}
+            history={history}
+            metricWeights={metricWeights}
+            contextData={contextData}
+            onAutoScan={startActiveCheckup}
+            onRepair={handleRepair}
+            onToggleCategory={handleCategoryToggle}
+            onSaveCompletenessFields={handleSaveConfig}
+            onSaveUniquenessFields={handleSaveUniquenessConfig}
+            onBackToDesktop={() => setViewMode('desktop')}
+            onLogout={() => setIsLoggedIn(false)}
+            onOpenHistory={() => setIsHistoryModalOpen(true)}
+            onSaveWeights={setMetricWeights}
+            onViewRawData={(source) => setRawDataSource(source)}
+            onRefresh={() => {
+              const { metrics: newMetrics, issues: newIssues } = processData(appData.data, completenessKeyFields, uniquenessKeyFields, selectedCategories, complianceRules, metricWeights);
+              setMetrics(newMetrics);
+              setIssues(newIssues);
+            }}
+          />
+          <HistoryModal
+            isOpen={isHistoryModalOpen}
+            onClose={() => setIsHistoryModalOpen(false)}
+            history={history}
+            onLoad={handleLoadHistory}
+            onDelete={handleDeleteHistory}
+          />
+        </>
       ) : (
         <motion.div
           key="dashboard"
@@ -313,7 +383,14 @@ const App = () => {
                    )}
                  </div>
               </div>
-              <div className="flex gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+              <div className="flex flex-wrap gap-3 w-full sm:w-auto mt-4 sm:mt-0">
+                  <button 
+                    onClick={() => setViewMode('mobile')}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-violet-700 text-white rounded-xl text-sm font-semibold hover:shadow-lg hover:shadow-indigo-500/20 active:scale-95 transition-all animate-pulse"
+                  >
+                      <Smartphone size={16} />
+                      📱 极速移动端 (Demo)
+                  </button>
                   <button 
                     onClick={() => setIsWeightModalOpen(true)}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
@@ -499,6 +576,7 @@ const App = () => {
               onClose={() => setIsUniquenessConfigModalOpen(false)}
               onSave={handleSaveUniquenessConfig}
               initialFields={uniquenessKeyFields}
+              selectedCategories={selectedCategories}
             />
 
             <AccuracyConfigModal

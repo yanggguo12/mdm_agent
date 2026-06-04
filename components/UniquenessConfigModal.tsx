@@ -1,108 +1,81 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, CheckSquare, Square, Plus, MessageSquare } from 'lucide-react';
+import { X, Save, CheckSquare, Square, Layers, Trash2, Link as LinkIcon, Plus, Layout, Grid3X3 } from 'lucide-react';
 import { MARA_FIELD_DESCRIPTIONS } from '../utils/dataProcessor';
-
-export let UNIQUENESS_OPTIONS = [
-  { id: 'MAKTX', label: '物料描述 (MAKTX)' },
-  { id: 'ZEINR_ZEIVR', label: '图号 (ZEINR) + 版本号 (ZEIVR)' },
-  { id: 'MFRPN', label: '制造商型号 (MFRPN)' },
-  { id: 'BISMT', label: '旧物料号 (BISMT)' }
-];
 
 interface UniquenessConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (fields: string[]) => void;
-  initialFields: string[];
+  onSave: (groups: string[][]) => void;
+  initialFields: string[][];
+  selectedCategories: string[];
 }
+
+const CATEGORY_FIELD_GROUPS: Record<string, string[]> = {
+  '基础数据MARA': ['MATNR', 'MAKTX', 'BISMT', 'MTART', 'MATKL', 'MEINS', 'BRGEW', 'NTGEW', 'GEWEI', 'MFRPN', 'ZEINR', 'ZEIVR', 'MSTAE', 'EXTWG'],
+  '工厂数据MARC': ['WERKS', 'DISMM', 'DISLS', 'PLIFZ', 'LGRZE', 'RGEKZ', 'XCHPF'],
+  '财务数据MBEW': ['BWKEY', 'BKLAS', 'VPRSV', 'VERPR', 'STPRS', 'PEINH', 'BWTTY'],
+  'BOM': ['STLNR', 'STLAL', 'STKO', 'STPO', 'MATNR', 'WERKS'],
+  '工作中心': ['ARBPL', 'WERKS', 'VERWE', 'KTEXT']
+};
 
 export const UniquenessConfigModal: React.FC<UniquenessConfigModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialFields
+  initialFields,
+  selectedCategories
 }) => {
-  const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set(initialFields));
-  const [options, setOptions] = useState(UNIQUENESS_OPTIONS);
-  const [customInput, setCustomInput] = useState('');
+  const [groups, setGroups] = useState<string[][]>(initialFields);
+  const [selection, setSelection] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setSelectedFields(new Set(initialFields));
-      setOptions(UNIQUENESS_OPTIONS);
-      setCustomInput('');
+      setGroups(initialFields);
+      setSelection([]);
+      setSearchQuery('');
     }
   }, [isOpen, initialFields]);
 
   if (!isOpen) return null;
 
-  const toggleField = (field: string) => {
-    const next = new Set(selectedFields);
-    if (next.has(field)) {
-      next.delete(field);
-    } else {
-      next.add(field);
-    }
-    setSelectedFields(next);
+  const toggleSelection = (field: string) => {
+    setSelection(prev => 
+      prev.includes(field) ? prev.filter(f => f !== field) : [...prev, field]
+    );
   };
 
-  const selectAll = () => {
-    setSelectedFields(new Set(options.map(o => o.id)));
-  };
-
-  const deselectAll = () => {
-    setSelectedFields(new Set());
-  };
-
-  const handleSave = () => {
-    onSave(Array.from(selectedFields));
-  };
-
-  const handleAddCustomField = () => {
-    if (!customInput.trim()) return;
+  const addRule = () => {
+    if (selection.length === 0) return;
     
-    const input = customInput.trim().toLowerCase();
-    let matchedKey: string | null = null;
-    let matchedDesc: string | null = null;
-
-    for (const [key, desc] of Object.entries(MARA_FIELD_DESCRIPTIONS)) {
-      if (input.includes(desc.toLowerCase()) || input.includes(key.toLowerCase())) {
-        matchedKey = key;
-        matchedDesc = desc;
-        break;
-      }
+    const sortedNew = [...selection].sort().join('|');
+    const exists = groups.some(g => [...g].sort().join('|') === sortedNew);
+    
+    if (!exists) {
+      setGroups([...groups, [...selection]]);
     }
-
-    if (matchedKey && matchedDesc) {
-      if (options.some(o => o.id === matchedKey)) {
-        alert('该字段已在配置列表中');
-        return;
-      }
-      
-      const newOption = { id: matchedKey, label: `${matchedDesc} (${matchedKey})` };
-      UNIQUENESS_OPTIONS.push(newOption);
-      setOptions([...UNIQUENESS_OPTIONS]);
-      
-      const next = new Set(selectedFields);
-      next.add(matchedKey);
-      setSelectedFields(next);
-      
-      setCustomInput('');
-    } else {
-      alert('不属于可配置范围');
-    }
+    setSelection([]);
   };
+
+  const removeGroup = (index: number) => {
+    setGroups(groups.filter((_, i) => i !== index));
+  };
+
+  const clearSelection = () => setSelection([]);
 
   return (
     <div className="fixed inset-0 z-[60] bg-slate-900/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200">
         
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">配置关键属性 (唯一性校验)</h2>
+            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Layers className="text-blue-600" size={24} />
+              配置关键属性 (唯一性校验)
+            </h2>
             <p className="text-sm text-slate-500 mt-1">
-              勾选的字段将被组合作为唯一性校验的关键字段。如果记录中这些字段的组合重复，则该记录将被判定为不唯一。
+              通过勾选字段并添加为“唯一性规则”（单字段或复合键）来确保数据不重复。
             </p>
           </div>
           <button 
@@ -113,106 +86,162 @@ export const UniquenessConfigModal: React.FC<UniquenessConfigModalProps> = ({
           </button>
         </div>
 
-        {/* Toolbar */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100 flex items-center gap-4">
-          <button 
-            onClick={selectAll}
-            className="text-sm font-medium text-slate-600 hover:text-blue-600 flex items-center gap-1.5"
-          >
-            <CheckSquare size={16} /> 全选
-          </button>
-          <button 
-            onClick={deselectAll}
-            className="text-sm font-medium text-slate-600 hover:text-slate-900 flex items-center gap-1.5"
-          >
-            <Square size={16} /> 取消全选
-          </button>
-          <div className="ml-auto text-sm font-medium text-slate-500">
-            已选择 <span className="text-blue-600 font-bold">{selectedFields.size}</span> 个字段
-          </div>
-        </div>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-50/30">
+            
+            {/* Search and Quick Selection */}
+            <div className="mb-6 flex gap-3 items-center">
+              <div className="relative flex-1">
+                <input 
+                  type="text"
+                  placeholder="搜索字段名称或代码..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all shadow-sm bg-white"
+                />
+              </div>
+              {selection.length > 0 && (
+                <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
+                  <span className="text-xs font-bold text-slate-500">已选 {selection.length} 个字段</span>
+                  <button 
+                    onClick={addRule}
+                    className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center gap-1.5"
+                  >
+                    <Plus size={14} /> 添加为{selection.length > 1 ? '复合' : '独立'}规则
+                  </button>
+                  <button onClick={clearSelection} className="text-xs text-slate-400 hover:text-slate-600 px-2 font-medium">取消</button>
+                </div>
+              )}
+            </div>
 
-        {/* Field Grid */}
-        <div className="p-6 overflow-y-auto flex-1">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {options.map(option => {
-              const isSelected = selectedFields.has(option.id);
-              return (
-                <label 
-                  key={option.id}
-                  className={`
-                    flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
-                    ${isSelected 
-                      ? 'border-blue-500 bg-blue-50/50 shadow-sm' 
-                      : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50'
-                    }
-                  `}
-                >
-                  <div className={`
-                    w-5 h-5 rounded flex items-center justify-center border transition-colors shrink-0
-                    ${isSelected ? 'bg-blue-600 border-blue-600' : 'border-slate-300 bg-white'}
-                  `}>
-                    {isSelected && <CheckSquare size={14} className="text-white" />}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium truncate ${isSelected ? 'text-blue-900' : 'text-slate-700'}`}>
-                      {option.label}
+            {/* Field Groups (The scrolling part) */}
+            <div className="space-y-8">
+              {selectedCategories.map(cat => {
+                const allFields = CATEGORY_FIELD_GROUPS[cat] || [];
+                const filteredFields = allFields.filter(f => 
+                  f.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                  (MARA_FIELD_DESCRIPTIONS[f] || '').toLowerCase().includes(searchQuery.toLowerCase())
+                );
+
+                if (filteredFields.length === 0 && searchQuery) return null;
+
+                return (
+                  <div key={cat} className="space-y-3">
+                    <div className="flex items-center gap-3 px-1">
+                      <h3 className="text-sm font-black text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                        <Layout size={16} className="text-slate-400" />
+                        {cat.replace('数据', '')}
+                      </h3>
+                      <div className="h-[1px] flex-1 bg-slate-200/60" />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {filteredFields.map(field => {
+                        const isSelected = selection.includes(field);
+                        const desc = MARA_FIELD_DESCRIPTIONS[field] || field;
+                        return (
+                          <label 
+                            key={field}
+                            className={`
+                              flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
+                              ${isSelected 
+                                ? 'border-blue-500 bg-blue-50/50 shadow-sm' 
+                                : 'border-slate-200 hover:border-slate-300 hover:bg-white bg-white/60'}
+                            `}
+                          >
+                            <input 
+                              type="checkbox" 
+                              className="hidden" 
+                              checked={isSelected} 
+                              onChange={() => toggleSelection(field)} 
+                            />
+                            <div className={`
+                              w-5 h-5 rounded flex items-center justify-center border transition-colors flex-shrink-0
+                              ${isSelected ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'}
+                            `}>
+                              {isSelected && <CheckSquare size={14} />}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className={`text-sm font-bold ${isSelected ? 'text-blue-900' : 'text-slate-700'} truncate`}>
+                                {field}
+                              </span>
+                              <span className={`text-xs ${isSelected ? 'text-blue-600' : 'text-slate-500'} truncate`}>
+                                {desc}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
-                  <input 
-                    type="checkbox" 
-                    className="sr-only"
-                    checked={isSelected}
-                    onChange={() => toggleField(option.id)}
-                  />
-                </label>
-              );
-            })}
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sidebar: Active Rules Container */}
+          <div className="w-[320px] bg-slate-50 border-l border-slate-100 flex flex-col">
+            <div className="p-4 border-b border-slate-100 bg-white flex items-center justify-between">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <Grid3X3 size={14} />
+                生效规则集 ({groups.length})
+              </span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {groups.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3 opacity-60 text-center py-10 px-4">
+                  <Layers size={32} strokeWidth={1.5} />
+                  <p className="text-xs font-medium">尚未配置任何规则，请从左侧选择字段并添加</p>
+                </div>
+              ) : (
+                groups.map((group, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm hover:shadow-md transition-all group relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight ${group.length > 1 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
+                        {group.length > 1 ? '复合规则' : '独立规则'}
+                      </span>
+                      <button 
+                        onClick={() => removeGroup(idx)}
+                        className="p-1 hover:bg-rose-50 hover:text-rose-600 text-slate-300 rounded transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {group.map((f, fIdx) => (
+                        <React.Fragment key={fIdx}>
+                          <div className="px-2 py-1 bg-slate-50 border border-slate-100 rounded text-[11px] font-bold text-slate-600">
+                             {MARA_FIELD_DESCRIPTIONS[f] || f}
+                          </div>
+                          {fIdx < group.length - 1 && <LinkIcon size={10} className="text-slate-300" />}
+                        </React.Fragment>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-2xl">
-          <div className="flex-1 flex items-center gap-2 w-full">
-            <div className="relative flex-1 max-w-md">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MessageSquare size={16} className="text-slate-400" />
-              </div>
-              <input
-                type="text"
-                value={customInput}
-                onChange={(e) => setCustomInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCustomField()}
-                placeholder="描述要增加的字段，如：特征值"
-                className="block w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-blue-500 focus:border-blue-500 bg-white"
-              />
-            </div>
-            <button
-              onClick={handleAddCustomField}
-              disabled={!customInput.trim()}
-              className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-xl hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
-            >
-              <Plus size={16} />
-              添加
-            </button>
-          </div>
-          
-          <div className="flex gap-3 shrink-0 w-full sm:w-auto justify-end">
-            <button 
-              onClick={onClose}
-              className="px-6 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors"
-            >
-              取消
-            </button>
-            <button 
-              onClick={handleSave}
-              disabled={selectedFields.size === 0}
-              className="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shadow-blue-200"
-            >
-              <Save size={16} />
-              保存配置
-            </button>
-          </div>
+        <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 rounded-b-2xl shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.02)]">
+          <button
+            onClick={onClose}
+            className="px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-200 bg-slate-100 rounded-xl transition-colors"
+          >
+            放弃修改
+          </button>
+          <button
+            onClick={() => onSave(groups)}
+            disabled={groups.length === 0}
+            className="px-10 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-all shadow-lg shadow-blue-100 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save size={18} />
+            保存并应用配置
+          </button>
         </div>
       </div>
     </div>

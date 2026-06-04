@@ -164,7 +164,7 @@ export const getCanonicalDesc = (desc: string) => {
 export const processData = (
   data: SAPMaterial[], 
   completenessKeyFields: string[], 
-  uniquenessKeyFields: string[] = ['MAKTX'],
+  uniquenessKeyFields: string[][] = [['MAKTX']], // Now string[][] for groups
   selectedCategories: string[] = ['基础数据MARA'],
   complianceRules: any[] = [],
   customWeights?: Record<string, number>
@@ -193,33 +193,30 @@ export const processData = (
   const completeRecords = total - missingMatklRecords.length;
   const completenessScore = total === 0 ? 100 : Math.round((completeRecords / total) * 100);
 
-  // 2. Uniqueness Calculation (OR relationship)
-  const keyToIndices = new Map<string, number[]>();
+  // 2. Uniqueness Calculation (Independent groups, Graph approach)
+  // keyStructureToIndices: Map<groupId, Map<compositeKeyValue, indices[]>>
+  const groupToKeyToIndices = new Map<number, Map<string, number[]>>();
   
   data.forEach((d, index) => {
-    uniquenessKeyFields.forEach(field => {
-      let val = '';
-      let isValid = false;
-
-      if (field === 'MAKTX') {
-        val = getCanonicalDesc(d.MAKTX);
-        isValid = !!val && val.trim() !== '';
-      } else if (field === 'ZEINR_ZEIVR') {
-        if (d.ZEINR && d.ZEINR.trim() !== '') {
-          val = `${d.ZEINR.trim()}_${(d.ZEIVR || '').trim()}`;
-          isValid = true;
-        }
-      } else {
-        val = (d[field as keyof SAPMaterial] || '').toString().trim();
-        isValid = !!val && val !== '';
+    uniquenessKeyFields.forEach((group, groupIdx) => {
+      if (!groupToKeyToIndices.has(groupIdx)) {
+        groupToKeyToIndices.set(groupIdx, new Map());
       }
+      const keyToIndices = groupToKeyToIndices.get(groupIdx)!;
+
+      const fieldValues = group.map(field => {
+        if (field === 'MAKTX') return getCanonicalDesc(d.MAKTX);
+        return (d[field as keyof SAPMaterial] || '').toString().trim();
+      });
+
+      const isValid = fieldValues.every(v => !!v && v.trim() !== '');
       
       if (isValid) {
-        const mapKey = `${field}:${val}`;
-        if (!keyToIndices.has(mapKey)) {
-          keyToIndices.set(mapKey, []);
+        const compositeKey = fieldValues.join('|');
+        if (!keyToIndices.has(compositeKey)) {
+          keyToIndices.set(compositeKey, []);
         }
-        keyToIndices.get(mapKey)!.push(index);
+        keyToIndices.get(compositeKey)!.push(index);
       }
     });
   });
@@ -228,16 +225,18 @@ export const processData = (
   const adjList = new Map<number, Set<number>>();
   for (let i = 0; i < total; i++) adjList.set(i, new Set());
 
-  keyToIndices.forEach(indices => {
-    if (indices.length > 1) {
-      // Connect all indices in this group
-      for (let i = 0; i < indices.length; i++) {
-        for (let j = i + 1; j < indices.length; j++) {
-          adjList.get(indices[i])!.add(indices[j]);
-          adjList.get(indices[j])!.add(indices[i]);
+  groupToKeyToIndices.forEach(keyToIndices => {
+    keyToIndices.forEach(indices => {
+      if (indices.length > 1) {
+        // Connect all indices in this redundant group
+        for (let i = 0; i < indices.length; i++) {
+          for (let j = i + 1; j < indices.length; j++) {
+            adjList.get(indices[i])!.add(indices[j]);
+            adjList.get(indices[j])!.add(indices[i]);
+          }
         }
       }
-    }
+    });
   });
 
   // Find connected components
@@ -274,37 +273,28 @@ export const processData = (
         // Add all records in this component to duplicateRecords
         const groupId = `Group-${uniqueEntitiesCount}`;
         component.forEach(idx => {
-          // Determine which fields caused the duplication for this specific record
+          // Determine which groups caused the duplication
           const duplicateReasons: string[] = [];
-          uniquenessKeyFields.forEach(field => {
-             let val = '';
-             let isValid = false;
+          uniquenessKeyFields.forEach((group, groupIdx) => {
+            const fieldValues = group.map(field => {
+              if (field === 'MAKTX') return getCanonicalDesc(data[idx].MAKTX);
+              return (data[idx][field as keyof SAPMaterial] || '').toString().trim();
+            });
 
-             if (field === 'MAKTX') {
-               val = getCanonicalDesc(data[idx].MAKTX);
-               isValid = !!val && val.trim() !== '';
-             } else if (field === 'ZEINR_ZEIVR') {
-               if (data[idx].ZEINR && data[idx].ZEINR.trim() !== '') {
-                 val = `${data[idx].ZEINR.trim()}_${(data[idx].ZEIVR || '').trim()}`;
-                 isValid = true;
-               }
-             } else {
-               val = (data[idx][field as keyof SAPMaterial] || '').toString().trim();
-               isValid = !!val && val !== '';
-             }
-             
-             if (isValid) {
-                 const mapKey = `${field}:${val}`;
-                 if (keyToIndices.has(mapKey) && keyToIndices.get(mapKey)!.length > 1) {
-                     duplicateReasons.push(field);
-                 }
-             }
+            const isValid = fieldValues.every(v => !!v && v.trim() !== '');
+            if (isValid) {
+              const compositeKey = fieldValues.join('|');
+              const indices = groupToKeyToIndices.get(groupIdx)?.get(compositeKey);
+              if (indices && indices.length > 1) {
+                duplicateReasons.push(group.map(f => MARA_FIELD_DESCRIPTIONS[f] || f).join('+'));
+              }
+            }
           });
 
           const record = { 
               ...data[idx], 
               _duplicateGroup: groupId,
-              _duplicateReasons: duplicateReasons.join(', ')
+              _duplicateReasons: [...new Set(duplicateReasons)].join('; ')
           };
           duplicateRecords.push(record);
         });
@@ -392,7 +382,7 @@ export const processData = (
       color: '#10b981',
       calculationDetails: {
         formula: '((总记录数 - 冗余记录数) / 总记录数) × 100%',
-        description: `检测系统中是否存在关键属性（${uniquenessKeyFields.join(' 或 ')}）重复的物料主数据。`,
+        description: `检测系统中是否存在关键属性（${uniquenessKeyFields.map(g => g.map(f => MARA_FIELD_DESCRIPTIONS[f] || f).join('+')).join(' 或 ')}）重复的物料主数据。`,
         numerator: { label: '唯一记录数', value: total - duplicateCount },
         denominator: { label: '总记录数', value: total },
         dataSources: [tableLabel],
@@ -401,10 +391,10 @@ export const processData = (
         sampleColumns: [
           { key: 'MATNR', label: '物料号' },
           { key: 'MAKTX', label: '描述' },
-          ...uniquenessKeyFields.filter(f => f !== 'MAKTX').flatMap(field => {
-            if (field === 'ZEINR_ZEIVR') return [{ key: 'ZEINR', label: '图号' }, { key: 'ZEIVR', label: '版本号' }];
-            return [{ key: field, label: MARA_FIELD_DESCRIPTIONS[field] || field }];
-          })
+          ...Array.from(new Set(uniquenessKeyFields.flat())).filter(f => f !== 'MAKTX').map(field => ({
+            key: field as string,
+            label: (MARA_FIELD_DESCRIPTIONS[field as string] || field) as string
+          }))
         ]
       }
     },
@@ -566,7 +556,7 @@ export const processData = (
   return { metrics, issues: finalIssues };
 };
 
-export const generateAndProcessData = (count: number = 1000, completenessKeyFields: string[] = ['MATKL'], uniquenessKeyFields: string[] = ['MAKTX'], selectedCategories: string[] = ['基础数据MARA']) => {
+export const generateAndProcessData = (count: number = 1000, completenessKeyFields: string[] = ['MATKL'], uniquenessKeyFields: string[][] = [['MAKTX']], selectedCategories: string[] = ['基础数据MARA']) => {
   const data: SAPMaterial[] = [];
   const materialTypes = ['ROH', 'HALB', 'FERT'];
   const units = ['PC', 'KG', 'M', 'L'];
@@ -697,7 +687,12 @@ export const generateAndProcessData = (count: number = 1000, completenessKeyFiel
     });
   }
 
-  const { metrics, issues } = processData(data, completenessKeyFields, uniquenessKeyFields, selectedCategories);
+  const { metrics, issues } = processData(data, completenessKeyFields, uniquenessKeyFields, selectedCategories, [], {
+    '完整性': 30,
+    '唯一性': 30,
+    '准确性': 20,
+    '合规性': 20
+  });
 
   return { data, metrics, issues };
 };
