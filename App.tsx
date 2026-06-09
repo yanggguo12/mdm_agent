@@ -392,13 +392,6 @@ const App = () => {
                       📱 极速移动端 (Demo)
                   </button>
                   <button 
-                    onClick={() => setIsWeightModalOpen(true)}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
-                  >
-                      <Scale size={16} />
-                      权重
-                  </button>
-                  <button 
                     onClick={() => setIsHistoryModalOpen(true)}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-sm font-semibold hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-all"
                   >
@@ -589,13 +582,6 @@ const App = () => {
               isOpen={isComplianceConfigModalOpen}
               onClose={() => setIsComplianceConfigModalOpen(false)}
               onSave={handleSaveComplianceConfig}
-            />
-
-            <WeightConfigModal
-              isOpen={isWeightModalOpen}
-              onClose={() => setIsWeightModalOpen(false)}
-              currentWeights={metricWeights}
-              onSave={(newWeights) => setMetricWeights(newWeights)}
             />
 
             <RepairDetailsModal

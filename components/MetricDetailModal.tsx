@@ -295,8 +295,7 @@ export const MetricDetailModal: React.FC<MetricDetailModalProps> = ({
                 
                 <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center">
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium text-slate-600">指标得分 / 权重</span>
-                    <span className="text-[10px] text-slate-400 font-mono italic">该指标在总分中占比: {metric.weight}%</span>
+                    <span className="text-sm font-medium text-slate-600">指标得分</span>
                   </div>
                   <span className="text-2xl font-extrabold" style={{ color: metric.color }}>
                     {metric.score}<span className="text-lg opacity-70">%</span>

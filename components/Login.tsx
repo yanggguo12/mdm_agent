@@ -95,9 +95,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, viewMode, setViewMode }) 
             {/* Light forms consistently paired with the desktop style */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-0.5 flex justify-between">
-                  <span>输入账号</span>
-                  <span className="text-slate-300">Account</span>
+                <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-0.5">
+                  <span>账号</span>
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
@@ -115,9 +114,8 @@ export const Login: React.FC<LoginProps> = ({ onLogin, viewMode, setViewMode }) 
               </div>
 
               <div>
-                <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-0.5 flex justify-between">
-                  <span>输入密码</span>
-                  <span className="text-slate-300">Password</span>
+                <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 px-0.5">
+                  <span>密码</span>
                 </label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-colors">
