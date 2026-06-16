@@ -1,0 +1,19 @@
+{
+  "name": "data-health-steward-uniapp",
+  "version": "1.0.0",
+  "description": "物料主数据治理健康管家 - 微信小程序 (uni-app Vue 3 极速重构版)",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "^3.0.0",
+    "vite": "^4.0.0"
+  },
+  "uni-app": {
+    "scripts": {}
+  }
+}

@@ -6,7 +6,7 @@ import {
   CheckCircle2, Database, Wand2, Volume2, Settings, ListFilter,
   Check, Info, ChevronDown, Layers, Laptop, ShieldAlert, ArrowRight,
   Sliders, Shield, ClipboardList, RefreshCw, Sparkle, Smartphone, LogOut,
-  TrendingUp
+  TrendingUp, Calculator
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataIssue, HealthMetric, ScanHistoryItem } from '../types';
@@ -45,6 +45,160 @@ const CATEGORY_FIELD_GROUPS: Record<string, string[]> = {
   '重量/体积': ['BRGEW', 'NTGEW', 'GEWEI', 'VOLUM', 'VOLEH'],
   '设计属性': ['BISMT', 'ZEINR', 'ZEIVR', 'EXTWG', 'MSTAE']
 };
+
+const getUniappIndexVue = (completenessFields: string[], uniquenessGroups: string[][], selectedCats: string[]) => {
+  return `<template>
+  <view class="uniapp-container">
+    
+    <!-- WECHAT MINI-PROGRAM CUSTOM TOP HEADER -->
+    <view class="wechat-header flex items-center justify-between">
+      <view class="text-slate-400 text-[10px] font-bold">📂 微应用端 (uni-app Vue3)</view>
+      <view class="header-title"><text class="font-bold">数据治理健康管家</text></view>
+      <view class="capsule-placeholder">⚙️ 行动对账</view>
+    </view>
+    
+    <!-- RADAR ROTATING SCROLLER SCANNER -->
+    <view class="radar-scan-box p-6 flex flex-col items-center">
+      <view class="pulse-ring animate-ping"></view>
+      <text class="score text-2xl font-black text-[#07c160]">88% 健康度</text>
+    </view>
+
+    <!-- ERP DYNAMIC RULES CORRESPONDENCE -->
+    <view class="section-card bg-white p-4 rounded-xl shadow-sm">
+      <view class="title font-bold text-xs mb-2">🔑 物理主键必选必填校验 (同步配置 ${completenessFields.length} 项):</view>
+      <view class="tags-row flex flex-wrap gap-2">
+        ${completenessFields.map(f => `<text class="tag-cell bg-[#edfbf3] text-[#07c160] px-2 py-1 text-[20rpx] rounded mr-2 mb-2 font-mono">${f}</text>`).join('')}
+      </view>
+    </view>
+
+    <!-- UNIQUENESS MULTI-CODE DEFENSE COMBINATIONS -->
+    <view class="section-card bg-white p-4 rounded-xl shadow-sm mt-3">
+      <view class="title font-bold text-xs mb-2">🛡️ 防重一物多码过滤组合 (同步配置 ${uniquenessGroups.length} 组):</view>
+      <view class="combinations-column space-y-2">
+        ${uniquenessGroups.map(g => `<view class="combo-item py-1.5 border-b border-slate-100 text-[22rpx] text-slate-700 font-mono">☑️ ${g.join(' + ')}</view>`).join('')}
+      </view>
+    </view>
+
+    <!-- AI AGENT CHAT OVERVIEW -->
+    <view class="section-card bg-white p-4 rounded-xl shadow-sm mt-3 flex items-center gap-2">
+      <text class="text-xs">💬 AI大语言模型对齐引擎: 已就绪</text>
+    </view>
+
+  </view>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue';
+
+const healthScore = ref(88);
+const selectedPartitions = ref(${JSON.stringify(selectedCats)});
+const currentEngineStatus = ref('NORMAL');
+
+const runLocalAudit = () => {
+  console.log('正在执行物理表检查...');
+};
+</script>
+
+<style>
+/* 微信高仿真原生布局重写 */
+page { 
+  background-color: #F7F7F7; 
+  font-family: -apple-system, sans-serif;
+}
+.tag-cell {
+  background: #edfbf3;
+  color: #07c160;
+  border: 1rpx solid #bfeecf;
+}
+.section-card {
+  border: 1rpx solid #efefef;
+}
+</style>`;
+};
+
+const getUniappPagesJson = () => `{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "enablePullDownRefresh": false
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "主数据质量健康管家",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F7F7F7"
+  }
+}`;
+
+const getUniappAppVue = () => `<script>
+export default {
+  onLaunch: function() { console.log('App Launch'); },
+  onShow: function() { console.log('App Show'); },
+  onHide: function() { console.log('App Hide'); }
+}
+</script>
+<style>
+@import url("https://unpkg.com/@tailwindcss/browser@4");
+page {
+  background-color: #f7f7f7;
+  color: #333333;
+}
+::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+}
+</style>`;
+
+const getUniappPackageJson = () => `{
+  "name": "data-health-steward-uniapp",
+  "version": "1.0.0",
+  "description": "物料主数据治理健康管家 - 微信小程序 (uni-app Vue 3 极速重构版)",
+  "scripts": {
+    "dev:mp-weixin": "uni -p mp-weixin",
+    "build:mp-weixin": "uni build -p mp-weixin"
+  },
+  "dependencies": {
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@dcloudio/vite-plugin-uni": "^3.0.0",
+    "vite": "^4.0.0"
+  }
+}`;
+
+const getUniappMainJs = () => `import { createSSRApp } from 'vue'
+import App from './App.vue'
+
+export function createApp() {
+  const app = createSSRApp(App)
+  return { app }
+}`;
+
+const getUniappReadme = () => `# 微信小程序 / uni-app 移动端运行指南 (主数据健康管家)
+
+为了完美的符合手机版的跨平台性能，我们采用 Vue 3.x 开发了完整的 uni-app 小程序包。
+
+## 🛠️ 环境准备与快速启动
+
+### 准备工作：
+1. **下载安装 HBuilderX**: 官方安装 HBuilderX 编译器。
+2. **下载并开启微信开发者工具安全端口**:
+   - 打开微信开发者工具 -> 【设置】 -> 【安全设置】 -> 【启用服务端口】。
+
+### 编译调取运行：
+1. 进入 HBuilderX -> 选择左上角文件菜单的【导入】 -> 【从本地目录导入】，引入 \`/uniapp-mobile\` 项目文件夹。
+2. 点击顶部菜单栏 of the HBuilderX -> 【运行】 -> 【运行到小程序模拟器】 -> 【微信开发者工具】。
+3. 系统将后台自动进行 NPM 构建，并为您拉起微信客户端。
+
+## ✨ 技术特色
+- **物理打标签**: 所有字段均采用微信最简 WXML/WXSS 标准对仗。
+- **免除字体加载乱码**: 图标均为精细 SVG，100% 离线完美呈现实体。
+`;
 
 export const MobileView: React.FC<MobileViewProps> = ({
   metrics,
@@ -110,7 +264,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
   const [issuesSubTab, setIssuesSubTab] = useState<'diagnosis' | 'policies'>('diagnosis');
 
   // Active sub-tab state for Settings (rules config) to provide smooth tab preview and avoid lengthy lists
-  const [settingsSubTab, setSettingsSubTab] = useState<'completeness' | 'uniqueness' | 'accuracy' | 'compliance' | 'weights'>('completeness');
+  const [settingsSubTab, setSettingsSubTab] = useState<'completeness' | 'uniqueness' | 'accuracy' | 'compliance' | 'weights' | 'uniapp'>('completeness');
 
   // Active sub-view state for home tab to support drill down and back navigation
   const [homeSubView, setHomeSubView] = useState<'main' | 'diagnosis' | 'policies'>('main');
@@ -170,6 +324,8 @@ export const MobileView: React.FC<MobileViewProps> = ({
 
   // Selected setting partition for settings 5-zone view
   const [selectedSettingPartition, setSelectedSettingPartition] = useState<string | null>(null);
+  const [selectedUniappFile, setSelectedUniappFile] = useState<string>('index.vue');
+  const [copiedFile, setCopiedFile] = useState<boolean>(false);
 
   // Secondary sub-tab states for non-MARA partitions to allow fully interactive demo
   const [marcCompletenessFields, setMarcCompletenessFields] = useState<string[]>(['WERKS', 'DISPO']);
@@ -353,12 +509,94 @@ export const MobileView: React.FC<MobileViewProps> = ({
 
   const activeIssues = issues.filter(i => i.status !== 'Fixed');
 
+  const getWeChatNavBarTitle = () => {
+    if (activeTab === 'home') {
+      if (viewingIssueDetails) return '质量缺陷诊断会诊';
+      if (selectedMetricDetail) return `指标诊断: ${selectedMetricDetail.name}`;
+      if (isAllIssuesOpen) return '物理数据质量异常全景';
+      if (homeSubView === 'diagnosis') return '关键问题诊断';
+      if (homeSubView === 'policies') return '自动修复策略';
+      return '数据治理健康管家';
+    }
+    if (activeTab === 'ai') return 'AI 数据助手';
+    if (activeTab === 'settings') {
+      if (selectedSettingPartition === 'completeness') return '完整性规则校验';
+      if (selectedSettingPartition === 'uniqueness') return '唯一性防重主键';
+      if (selectedSettingPartition === 'accuracy') return '准确性常识校验';
+      if (selectedSettingPartition === 'compliance') return '合规性内外双环';
+      if (selectedSettingPartition === 'uniapp') return '小程序源码工作台';
+      return '规则配置引擎';
+    }
+    if (activeTab === 'profile') return '个人中心';
+    return '微小程序';
+  };
+
   return (
-    <div className="w-full min-h-screen bg-slate-50 text-slate-800 flex flex-col overflow-hidden relative select-none font-sans">
+    <div className="w-full min-h-screen bg-[#f7f7f7] text-slate-800 flex flex-col overflow-hidden relative select-none font-sans">
       
-      {/* Background radial gradients matching web desktop style */}
-      <div className="absolute top-0 left-0 w-96 h-96 bg-blue-100/20 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-100/20 rounded-full blur-[140px] pointer-events-none" />
+      {/* WECHAT MINI-PROGRAM NATIVE TOP BAR */}
+      <div className="bg-white border-b border-slate-100/80 h-14 shrink-0 flex items-center justify-between px-4 sticky top-0 z-50">
+        {/* Left item - back button representation */}
+        <div className="w-20 flex items-center">
+          {((activeTab === 'home' && (viewingIssueDetails || selectedMetricDetail || isAllIssuesOpen || homeSubView !== 'main')) ||
+            (activeTab === 'settings' && selectedSettingPartition !== null)) ? (
+            <button
+              onClick={() => {
+                if (activeTab === 'home') {
+                  if (viewingIssueDetails) setViewingIssueDetails(null);
+                  else if (selectedMetricDetail) setSelectedMetricDetail(null);
+                  else if (isAllIssuesOpen) setIsAllIssuesOpen(false);
+                  else setHomeSubView('main');
+                } else if (activeTab === 'settings') {
+                  setSelectedSettingPartition(null);
+                }
+              }}
+              className="flex items-center gap-0.5 text-[#111111] hover:opacity-70 active:scale-95 transition-all text-xs font-bold select-none border-0 bg-transparent cursor-pointer"
+            >
+              <ChevronLeft size={18} className="stroke-[2.5]" />
+              <span>返回</span>
+            </button>
+          ) : (
+            <button
+              onClick={onBackToDesktop}
+              className="flex items-center gap-1 text-slate-400 hover:text-slate-700 transition-colors select-none text-[10px] font-black tracking-tight border-0 bg-transparent cursor-pointer"
+              title="切换到电脑端"
+            >
+              <Laptop size={13} />
+              <span>桌面端</span>
+            </button>
+          )}
+        </div>
+
+        {/* WeChat Centered Title */}
+        <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+          <span className="text-[13.5px] font-bold text-[#111111] tracking-tight truncate max-w-[150px]">
+            {getWeChatNavBarTitle()}
+          </span>
+        </div>
+
+        {/* WeChat Pill Capsule */}
+        <div className="flex items-center">
+          <div className="border border-slate-200 bg-white/90 rounded-full px-2.5 h-7 flex items-center gap-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] select-none">
+            {/* Dots */}
+            <div className="flex items-center gap-0.5">
+              <span className="w-1 h-1 bg-[#111] rounded-full" />
+              <span className="w-1.25 h-1.25 bg-[#111] rounded-full" />
+              <span className="w-1 h-1 bg-[#111] rounded-full" />
+            </div>
+            {/* Splitter */}
+            <span className="w-[1px] h-3 bg-slate-200" />
+            {/* Circle ring */}
+            <button
+              onClick={onLogout}
+              className="flex items-center justify-center p-0 w-3.5 h-3.5 rounded-full border border-slate-800 bg-transparent flex-shrink-0 relative active:scale-90 transition-all cursor-pointer"
+              title="安全退出"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-800" />
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* DYNAMIC SCANNERS & PROGRESS CHECKLIST */}
       {scanStep > 0 && scanStep < 4 && (
@@ -426,27 +664,12 @@ export const MobileView: React.FC<MobileViewProps> = ({
         
         {/* TAB 1: HOME (HEALTH REPORT CARD) */}
         {activeTab === 'home' && (
-          <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full">
+          <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full">
             {viewingIssueDetails ? (
               /* SECOND LEVEL VIEW: QUALITY ISSUE DETAILS PROBE */
-              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full relative">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-200/60 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setViewingIssueDetails(null)}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-95 transition-all cursor-pointer"
-                    title="返回"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-nowrap">
-                    <h2 className="text-sm font-bold text-slate-800 tracking-tight">质量缺陷深度诊断会诊</h2>
-                  </div>
-                  <div className="w-10" />
-                </div>
-
+              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full relative">
                 {/* Form Content Scrolling Area */}
-                <div className="flex-grow overflow-y-auto px-5 py-5 space-y-4 pb-6 scrollbar-hide bg-slate-50/30">
+                <div className="flex-grow overflow-y-auto px-5 py-5 space-y-4 pb-6 scrollbar-hide bg-transparent">
                   
                   {/* Brief Profile Banner */}
                   <div className="p-4 bg-white border border-slate-200 rounded-2xl flex items-center gap-3.5 shadow-3xs">
@@ -530,21 +753,17 @@ export const MobileView: React.FC<MobileViewProps> = ({
               </div>
             ) : isAllIssuesOpen ? (
               /* SECOND LEVEL VIEW: TOTAL ANOMALY TRACKER (FULL LIST) */
-              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full relative">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-200/60 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setIsAllIssuesOpen(false)}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-95 transition-all cursor-pointer"
-                    title="返回主页"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-nowrap">
-                    <h2 className="text-sm font-bold text-slate-800 tracking-tight">物理数据质量异常全景</h2>
-                  </div>
-                  <button
-                    onClick={() => {
+              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full relative">
+                {/* Scroll content list */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 pb-20 scrollbar-hide bg-transparent">
+                  {/* WeChat-style Quick Summary & Export Action Bar */}
+                  <div className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center justify-between shadow-[0_1px_3px_rgba(0,0,0,0.01)]">
+                    <div className="space-y-0.5 pr-2">
+                      <h4 className="text-xs font-bold text-slate-850">质量全景实抄对仗表</h4>
+                      <p className="text-[10px] text-slate-400 font-semibold leading-relaxed">共检测出 {issues.length} 条物理字段违规</p>
+                    </div>
+                    <button
+                      onClick={() => {
                         // 1. Define CSV Headers
                         const headers = ['ID', '严重程度', '表名', '字段', '问题描述', '影响范围', '类型', 'AI建议', '状态'];
                         
@@ -573,17 +792,13 @@ export const MobileView: React.FC<MobileViewProps> = ({
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
-                    }}
-                    className="p-1 px-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 rounded-xl text-[10px] font-extrabold flex items-center gap-1 transition-all active:scale-95 cursor-pointer shadow-3xs"
-                    title="导出 CSV 数据"
-                  >
-                    <RefreshCw size={11} className="text-slate-500" />
-                    <span>导出 CSV</span>
-                  </button>
-                </div>
-
-                {/* List content area */}
-                <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 pb-24 scrollbar-hide bg-slate-50/10">
+                      }}
+                      className="p-1.5 px-3 bg-[#07c160] hover:opacity-90 active:scale-95 text-white rounded-xl text-[10px] font-bold border-0 flex items-center gap-1 transition-all cursor-pointer shadow-sm select-none"
+                    >
+                      <RefreshCw size={11} className="text-white animate-spin-slow animate-duration-3000" />
+                      <span>导出 CSV 报表</span>
+                    </button>
+                  </div>
                   
                   {/* Visual statistics badge row */}
                   <div className="grid grid-cols-3 gap-2.5 shrink-0">
@@ -673,21 +888,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
               </div>
             ) : selectedMetricDetail ? (
               /* SECOND LEVEL VIEW: METRIC DETAIL SPEC SHEET */
-              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full relative">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-200/60 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setSelectedMetricDetail(null)}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-95 transition-all cursor-pointer"
-                    title="返回主页"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-nowrap">
-                    <h2 className="text-sm font-bold text-slate-800 tracking-tight">{selectedMetricDetail.name}指标诊断 Spec</h2>
-                  </div>
-                  <div className="w-10" />
-                </div>
+              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full relative">
 
                 {/* Calculating overlay inside Level 2 container */}
                 <AnimatePresence>
@@ -722,16 +923,11 @@ export const MobileView: React.FC<MobileViewProps> = ({
                 <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 pb-24 scrollbar-hide">
                   
                   {/* METRIC CARD BRIEF SUMMARY */}
-                  <div className="p-4 bg-white border border-slate-200 rounded-2xl flex items-center gap-3.5 shadow-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 shrink-0">
-                      {getMetricIcon(selectedMetricDetail.name)}
-                    </div>
-                    <div>
-                      <h4 className="text-[13px] font-black text-slate-900 leading-tight">实时得分: {selectedMetricDetail.score}%</h4>
-                      <p className="text-[10px] text-slate-500 font-bold mt-1">
-                        在已选物理数据分区（MARA等表组）中，整体健康率计算为 {selectedMetricDetail.score}%。
-                      </p>
-                    </div>
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex gap-3 shadow-3xs">
+                    <Info className="flex-shrink-0 text-blue-500 mt-0.5" size={16} />
+                    <p className="text-[11px] text-slate-600 leading-relaxed font-bold">
+                      {selectedMetricDetail.calculationDetails?.description}
+                    </p>
                   </div>
 
                   {/* METRIC ACTIONS BUTTON GRID (ALIGNED WITH WEB) */}
@@ -741,42 +937,72 @@ export const MobileView: React.FC<MobileViewProps> = ({
                         setActiveTab('settings');
                         setSelectedMetricDetail(null);
                       }}
-                      className="p-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl text-left flex flex-col justify-between h-[60px] transition-all active:scale-95 shadow-3xs cursor-pointer"
+                      className="py-2.5 px-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-3xs cursor-pointer"
                     >
-                      <Settings size={14} className="text-slate-600 font-bold" />
-                      <span className="text-[10px] font-black text-slate-800">去规则配置</span>
+                      <Settings size={13} className="text-slate-600 shrink-0" />
+                      <span className="text-[10px] font-black text-slate-800 whitespace-nowrap">去规则配置</span>
                     </button>
 
                     <button
                       onClick={handleRunSelectedMetricRule}
-                      className="p-2.5 bg-indigo-50/70 hover:bg-indigo-55 border border-indigo-100 rounded-xl text-left flex flex-col justify-between h-[60px] transition-all active:scale-95 shadow-3xs cursor-pointer"
+                      className="py-2.5 px-2 bg-indigo-50/70 hover:bg-indigo-100 border border-indigo-100/80 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-3xs cursor-pointer"
                     >
-                      <Play size={14} className="text-indigo-600 font-bold" fill="currentColor" />
-                      <span className="text-[10px] font-black text-indigo-900">运行规则</span>
+                      <Play size={12} className="text-indigo-600 shrink-0" fill="currentColor" />
+                      <span className="text-[10px] font-black text-indigo-900 whitespace-nowrap">运行规则</span>
                     </button>
 
                     <button
                       onClick={() => setIsTrendChartModalOpen(true)}
-                      className="p-2.5 bg-blue-50/70 hover:bg-blue-55 border border-blue-100 rounded-xl text-left flex flex-col justify-between h-[60px] transition-all active:scale-95 shadow-3xs cursor-pointer"
+                      className="py-2.5 px-2 bg-blue-50/70 hover:bg-blue-100 border border-blue-100/80 rounded-xl flex items-center justify-center gap-1.5 transition-all active:scale-95 shadow-3xs cursor-pointer"
                     >
-                      <TrendingUp size={14} className="text-blue-600 font-bold" />
-                      <span className="text-[10px] font-black text-blue-900">查看趋势图</span>
+                      <TrendingUp size={13} className="text-blue-600 shrink-0" />
+                      <span className="text-[10px] font-black text-blue-900 whitespace-nowrap">查看趋势图</span>
                     </button>
                   </div>
 
-                  {/* Scoring standard formulas explanation */}
-                  <div className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2">
-                    <p className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider">算法公式与数据源对撞关系</p>
-                    <p className="text-xs font-mono text-blue-600 bg-blue-50 p-2 rounded-xl border border-blue-100 font-bold">
-                      {selectedMetricDetail.name.includes('完整性') 
-                        ? 'Score = (1 - (MARA 字段留空记录数 / 抽样物料总记录数)) * 100%' 
-                        : selectedMetricDetail.name.includes('唯一性') 
-                          ? 'Score = (1 - (存在一物多码描述/编码重复项 / 抽样物料总数)) * 100%' 
-                          : 'Score = (1 - (数值异常超限或逻辑不相符记录 / 批处理总数)) * 100%'}
-                    </p>
-                    <div className="text-[10px] text-slate-500 leading-relaxed space-y-1 pt-1 font-semibold">
-                      <p>• **主涉物理表**: ERP MARA, MARC, MBEW 主表组</p>
-                      <p>• **刷新机理**: 当规则中勾选项变更，后台数据对碰一秒内刷新全局分数。</p>
+                  {/* Calculation Process (Exactly matching Web side details of MetricDetailModal) */}
+                  <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-3xs space-y-3.5">
+                    <h5 className="text-[11px] font-black text-slate-800 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+                      <Calculator size={14} className="text-slate-500" />
+                      <span>计算逻辑与过程</span>
+                    </h5>
+                    
+                    <div className="space-y-1">
+                      <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-wider">计算公式</span>
+                      <div className="font-mono text-[10px] text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100 break-all leading-normal">
+                        {selectedMetricDetail.calculationDetails?.formula}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5 text-center">
+                      <div className="p-2 bg-slate-50 border border-slate-100/80 rounded-xl">
+                        <div className="text-[8px] text-slate-500 mb-0.5 font-bold truncate">
+                          {selectedMetricDetail.calculationDetails?.numerator?.label}
+                        </div>
+                        <div className="text-[13px] font-black text-slate-800 font-mono">
+                          {selectedMetricDetail.calculationDetails?.numerator?.value?.toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-center text-slate-300">
+                        <span className="text-xl">/</span>
+                      </div>
+                      
+                      <div className="p-2 bg-slate-50 border border-slate-100/80 rounded-xl">
+                        <div className="text-[8px] text-slate-500 mb-0.5 font-bold truncate">
+                          {selectedMetricDetail.calculationDetails?.denominator?.label}
+                        </div>
+                        <div className="text-[13px] font-black text-slate-800 font-mono">
+                          {selectedMetricDetail.calculationDetails?.denominator?.value?.toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2.5 border-t border-slate-100 flex justify-between items-center text-[10px]">
+                      <span className="font-black text-slate-600">指标得分</span>
+                      <span className="text-[15px] font-black font-mono text-[#07c160]">
+                        {selectedMetricDetail.score}%
+                      </span>
                     </div>
                   </div>
 
@@ -1082,33 +1308,81 @@ export const MobileView: React.FC<MobileViewProps> = ({
             <div className="space-y-3">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">四大质量指标表现</span>
               
-              <div className="grid grid-cols-2 gap-3.5">
+              <div className="grid grid-cols-2 gap-4">
                 {metrics.map(metric => {
                   const isSelected = selectedMetricDetail && selectedMetricDetail.name === metric.name;
+                  const parts = metric.name.split(' ');
+                  const mainName = parts[0] || metric.name;
+                  const subName = parts.slice(1).join(' ').replace(/[()]/g, '') || '';
+                  
                   return (
                     <div 
                       key={metric.name}
                       onClick={() => setSelectedMetricDetail(metric)}
-                      className={`p-3.5 bg-gradient-to-br ${getMetricColor(metric.name)} border border-slate-100/40 rounded-2xl cursor-pointer transition-all active:scale-98 flex flex-col justify-between space-y-3 relative overflow-hidden shadow-sm`}
+                      className={`p-4 bg-white border border-slate-150/80 rounded-3xl cursor-pointer transition-all active:scale-97 hover:scale-[1.01] hover:shadow-md flex flex-col justify-between space-y-3.5 relative overflow-hidden shadow-[0_4px_16px_rgba(0,0,0,0.015)]`}
                     >
-                      <div className="flex justify-between items-center">
-                        <div className="p-1.5 bg-white/95 border border-slate-100 rounded-xl shadow-xs">
+                      {/* Top Row: Icon Container and Trend Indicator */}
+                      <div className="flex justify-between items-center w-full">
+                        <div className={`p-2 rounded-xl shrink-0 flex items-center justify-center ${
+                          metric.name.includes('完整性') ? 'bg-emerald-50 text-emerald-600' :
+                          metric.name.includes('唯一性') ? 'bg-indigo-50 text-indigo-600' :
+                          metric.name.includes('准确性') ? 'bg-amber-50 text-amber-600' :
+                          'bg-blue-50 text-blue-600'
+                        }`}>
                           {getMetricIcon(metric.name)}
                         </div>
-                      </div>
-
-                      <div className="space-y-1">
-                        <div className="text-[11px] text-slate-700 font-extrabold truncate">{metric.name}</div>
-                        <div className="flex items-baseline gap-0.5">
-                          <span className="text-xl font-extrabold font-mono text-slate-900">{metric.score}</span>
-                          <span className="text-[10px] text-slate-550 text-slate-400 font-semibold">分</span>
+                        
+                        {/* Elegant trend indicator */}
+                        <div className={`px-1.5 py-0.5 rounded-full text-[8.5px] font-bold tracking-tight flex items-center gap-0.5 ${
+                          metric.trend === 'up' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/30' :
+                          metric.trend === 'down' ? 'bg-rose-50 text-rose-650 border border-rose-100/30' :
+                          'bg-slate-50 text-slate-400 border border-slate-100/30'
+                        }`}>
+                          <span className={`w-1 h-1 rounded-full ${
+                            metric.trend === 'up' ? 'bg-emerald-500 animate-pulse' :
+                            metric.trend === 'down' ? 'bg-rose-500 animate-pulse' :
+                            'bg-slate-300'
+                          }`}></span>
+                          <span>{metric.trend === 'up' ? '提升' : metric.trend === 'down' ? '需关注' : '稳定'}</span>
                         </div>
                       </div>
 
-                      <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                      {/* Middle Row: Score Display & Evaluation Badge */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-0.5">
+                          <span className="text-2xl font-black font-mono text-slate-900 tracking-tight">{metric.score}</span>
+                          <span className="text-[10px] text-slate-400 font-bold">分</span>
+                        </div>
+
+                        <span className={`px-1.5 py-0.5 rounded-lg text-[9px] font-bold ${
+                          metric.score >= 90 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50' :
+                          metric.score >= 80 ? 'bg-blue-50 text-blue-600 border border-blue-100/50' :
+                          'bg-amber-50 text-amber-600 border border-amber-100/50'
+                        }`}>
+                          {metric.score >= 90 ? '卓越' : metric.score >= 80 ? '良好' : '待提升'}
+                        </span>
+                      </div>
+
+                      {/* Stacked Labels Row: Chinese primary, English subtitle without paren/truncation limits */}
+                      <div className="space-y-0.5 text-left min-w-0">
+                        <h4 className="text-[13.5px] font-black text-slate-800 truncate">
+                          {mainName}
+                        </h4>
+                        {subName && (
+                          <p className="text-[8.5px] text-slate-400 font-bold font-mono tracking-wider uppercase truncate leading-none">
+                            {subName}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Bottom Row: Theme-matched beautiful progress bar */}
+                      <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full ${
-                            metric.score >= 90 ? 'bg-emerald-500' : metric.score >= 70 ? 'bg-amber-500' : 'bg-rose-500'
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            metric.name.includes('完整性') ? 'bg-gradient-to-r from-emerald-400 to-teal-500' :
+                            metric.name.includes('唯一性') ? 'bg-gradient-to-r from-indigo-400 to-purple-500' :
+                            metric.name.includes('准确性') ? 'bg-gradient-to-r from-amber-400 to-orange-500' :
+                            'bg-gradient-to-r from-blue-400 to-sky-500'
                           }`}
                           style={{ width: `${metric.score}%` }}
                         />
@@ -1177,22 +1451,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
           </div>
         ) : homeSubView === 'diagnosis' ? (
               /* SECOND LEVEL VIEW: PROBLEM DIAGNOSIS */
-              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-205 border-slate-200/60 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setHomeSubView('main')}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-90 transition-all cursor-pointer"
-                    title="返回主页"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-                    <h2 className="text-sm font-bold text-slate-800 tracking-tight">关键问题诊断</h2>
-                  </div>
-                  <div className="w-10" />
-                </div>
-
+              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full">
                 {/* Diagnostics List Content */}
                 <div className="flex-grow overflow-y-auto px-5 py-4 pb-6 scrollbar-hide space-y-4">
                   {/* Banner at the top of body */}
@@ -1285,22 +1544,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
               </div>
             ) : (
               /* SECOND LEVEL VIEW: AUTO-REPAIR POLICIES */
-              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-slate-50/50 h-full w-full">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-205 border-slate-200/60 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setHomeSubView('main')}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-90 transition-all cursor-pointer"
-                    title="返回主页"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-                    <h2 className="text-sm font-bold text-slate-800 tracking-tight">自动修复策略</h2>
-                  </div>
-                  <div className="w-10" />
-                </div>
-
+              <div className="flex-grow overflow-hidden flex flex-col pt-0 animate-fade-in bg-[#f7f7f7] h-full w-full">
                 {/* Policies Content */}
                 <div className="flex-grow overflow-y-auto px-5 py-4 pb-6 scrollbar-hide space-y-4">
                   <div className="space-y-4 animate-fade-in">
@@ -1772,107 +2016,115 @@ export const MobileView: React.FC<MobileViewProps> = ({
 
         {/* TAB 4: SETTINGS (RULES MATRIX CENTER) */}
         {activeTab === 'settings' && (
-          <div className="flex-grow overflow-hidden flex flex-col pt-0 bg-slate-50/50 h-full w-full">
+          <div className="flex-grow overflow-hidden flex flex-col pt-0 bg-[#f7f7f7] h-full w-full">
             {selectedSettingPartition === null ? (
-              /* 4 Interactive Indicator Cards Modules directly rendered from top scale */
-              <div className="flex-grow overflow-y-auto px-5 py-5 pb-6 scrollbar-hide space-y-3.5 animate-fade-in animate-duration-150">
-                {[
-                  {
-                    id: 'completeness',
-                    name: '完整性规则校验',
-                    nameEn: 'Completeness',
-                    icon: <CheckCircle2 size={16} className="text-emerald-500" />,
-                    color: 'border-emerald-100 bg-emerald-50/40',
-                    desc: '指定必填物理字段校验范围，全面覆盖物料基础数据、采购销售及财务图纸。',
-                    activeRules: `${completenessKeyFields.length} 项必填字段生效中`,
-                    weight: metricWeights['completeness'] ?? 25
-                  },
-                  {
-                    id: 'uniqueness',
-                    name: '唯一性防重主键',
-                    nameEn: 'Uniqueness',
-                    icon: <Layers size={16} className="text-blue-500" />,
-                    color: 'border-blue-100 bg-blue-50/40',
-                    desc: '自定义物料重复性组合校验主键，智能拦截名称、型号、图纸等高相似记录。',
-                    activeRules: `${uniquenessKeyFields.length} 组联合唯一标识工作正常`,
-                    weight: metricWeights['uniqueness'] ?? 25
-                  },
-                  {
-                    id: 'accuracy',
-                    name: '准确性值域常识',
-                    nameEn: 'Accuracy',
-                    icon: <Activity size={16} className="text-amber-500" />,
-                    color: 'border-amber-100 bg-amber-50/40',
-                    desc: '管控物理值域极限制约及毛重净重常识，保障财务金额及参数高度贴合。',
-                    activeRules: '物理边界限制、毛重常识等 3 大算子稳定监视',
-                    weight: metricWeights['accuracy'] ?? 25
-                  },
-                  {
-                    id: 'compliance',
-                    name: '合规性内外双环',
-                    nameEn: 'Compliance',
-                    icon: <ShieldCheck size={16} className="text-violet-500" />,
-                    color: 'border-violet-100 bg-violet-50/40',
-                    desc: '内置海关STEUC税号通关认证，并与RoHS证书期限在出口前完成双重过滤审计。',
-                    activeRules: '海关税号归档、RoHS危化物及分词 4 项安全红线启用',
-                    weight: metricWeights['compliance'] ?? 25
-                  }
-                ].map(mod => (
-                  <button
-                    key={mod.id}
-                    onClick={() => {
-                      setSettingsSubTab(mod.id as any);
-                      setSelectedSettingPartition(mod.id as any);
-                    }}
-                    className="w-full text-left p-4 bg-white border border-slate-200/80 hover:border-blue-300 rounded-2xl shadow-3xs transition-all flex items-center justify-between group cursor-pointer active:scale-[0.98]"
-                  >
-                    <div className="flex items-center gap-3.5 min-w-0 pr-2">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${mod.color}`}>
-                        {mod.icon}
-                      </div>
-                      <div className="min-w-0 space-y-0.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-slate-800">{mod.name}</span>
-                          <span className="px-1 py-0.2 bg-slate-100 text-slate-400 border border-slate-250 rounded text-[7px] font-mono font-black uppercase">
-                            {mod.nameEn}
+              /* WeChat Operational Cell-Group style settings */
+              <div className="flex-grow overflow-y-auto px-4 py-4 pb-8 scrollbar-hide space-y-4 animate-fade-in">
+                
+                {/* WeChat Operation Group Label */}
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide px-1">
+                  数据质量核心规则配置
+                </div>
+
+                {/* Unified WeChat Cell Group Container */}
+                <div className="bg-white rounded-2xl overflow-hidden border border-slate-100 divide-y divide-slate-100 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+                  {[
+                    {
+                      id: 'completeness',
+                      name: '完整性规则校验',
+                      nameEn: 'Completeness',
+                      icon: <CheckCircle2 size={16} className="text-[#07c160]" />,
+                      color: 'bg-emerald-50 text-[#07c160]',
+                      desc: '指定必填物理字段校验范围，全面覆盖物料基础数据、采购销售及财务图纸。',
+                      activeRules: `${completenessKeyFields.length} 项必填字段生效中`,
+                    },
+                    {
+                      id: 'uniqueness',
+                      name: '唯一性防重主键',
+                      nameEn: 'Uniqueness',
+                      icon: <Layers size={16} className="text-blue-500" />,
+                      color: 'bg-blue-50 text-blue-500',
+                      desc: '自定义物料重复性组合校验主键，智能拦截名称、型号、图纸等高相似记录。',
+                      activeRules: `${uniquenessKeyFields.length} 组联合唯一标识工作正常`,
+                    },
+                    {
+                      id: 'accuracy',
+                      name: '准确性值域常识',
+                      nameEn: 'Accuracy',
+                      icon: <Activity size={16} className="text-amber-500" />,
+                      color: 'bg-amber-50 text-amber-550',
+                      desc: '管控物理值域极限制约及毛重净重常识，保障财务金额及参数高度贴合。',
+                      activeRules: '物理边界限制、毛重常识等 3 大算子稳定监视',
+                    },
+                    {
+                      id: 'compliance',
+                      name: '合规性内外双环',
+                      nameEn: 'Compliance',
+                      icon: <ShieldCheck size={16} className="text-violet-500" />,
+                      color: 'bg-violet-50 text-violet-500',
+                      desc: '内置海关STEUC税号通关认证，并与RoHS证书期限在出口前完成双重过滤审计。',
+                      activeRules: '海关税号归档、RoHS危化物及分词 4 项安全红线启用',
+                    },
+                    {
+                      id: 'uniapp',
+                      name: '🍀 uni-app 小程序源码中心',
+                      nameEn: 'uni-app SDK',
+                      icon: <Smartphone size={16} className="text-[#07c160]" />,
+                      color: 'bg-emerald-50 text-[#07c160]',
+                      desc: '浏览、测试及一键复制 Vue 3 高仿真客户端原生打包运行工程包代码。',
+                      activeRules: '物理主数据核心对仗引擎同步搭载',
+                    }
+                  ].map(mod => (
+                    <button
+                      key={mod.id}
+                      onClick={() => {
+                        setSettingsSubTab(mod.id as any);
+                        setSelectedSettingPartition(mod.id as any);
+                      }}
+                      className="w-full text-left p-4 bg-white hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer border-0 active:scale-[0.99] focus:outline-none"
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 pr-2">
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${mod.color}`}>
+                          {mod.icon}
+                        </div>
+                        <div className="min-w-0 space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-xs font-bold text-slate-800">{mod.name}</span>
+                            <span className="px-1 py-0.2 bg-slate-100 text-slate-400 border border-slate-200/60 rounded text-[7px] font-mono uppercase">
+                              {mod.nameEn}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 font-semibold leading-relaxed line-clamp-1">
+                            {mod.desc}
+                          </p>
+                          <span className="text-[8.5px] text-[#07c160] bg-emerald-50 border border-emerald-100/50 px-1.5 py-0.2 rounded font-semibold block w-fit mt-1">
+                            {mod.activeRules}
                           </span>
                         </div>
-                        <p className="text-[9.5px] text-slate-400 font-semibold leading-relaxed line-clamp-1">
-                          {mod.desc}
-                        </p>
-                        <span className="text-[8.5px] text-emerald-600 bg-emerald-50 border border-emerald-100 px-1 py-0.2 rounded font-black block w-fit mt-1">
-                          {mod.activeRules}
-                        </span>
                       </div>
-                    </div>
-                    <ChevronRight size={14} className="text-slate-400 group-hover:text-blue-500 transition-colors shrink-0" />
-                  </button>
-                ))}
+                      <ChevronRight size={14} className="text-slate-350 shrink-0" />
+                    </button>
+                  ))}
+                </div>
 
-                {/* Weights balance auditing card removed */}
+                {/* WeChat style Page footer to fill space beautifully */}
+                <div className="pt-16 pb-6 space-y-1 text-center px-4">
+                  <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400">
+                    <Bot size={11} className="text-slate-450 text-slate-400" />
+                    <span>智联云数据治理终端微应用</span>
+                  </div>
+                  <p className="text-[9px] text-slate-400 max-w-[280px] mx-auto leading-relaxed">
+                    基于主数据智能自愈大脑研发。所有规则与参数均与后台 ERP 系统物理表实现安全同舟。
+                  </p>
+                  <p className="text-[8px] text-slate-350 font-mono">
+                    CLIENT PROTOCOL VERSION WeChat-1.2.5
+                  </p>
+                </div>
+
               </div>
             ) : (
               // SECONDARY LEVEL VIEW: INDIVIDUAL INDICATOR RULES CUSTOMIZATION (二级质量指标设置页面)
-              <div className="flex-grow overflow-hidden flex flex-col bg-slate-50/50 animate-fade-in">
-                {/* Secondary Page Navigation Header - Native Mobile Style */}
-                <div className="h-12 border-b border-slate-200/80 bg-white flex items-center justify-between px-4 shrink-0 z-10 sticky top-0 relative">
-                  <button
-                    onClick={() => setSelectedSettingPartition(null)}
-                    className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center text-slate-800 active:scale-90 transition-all cursor-pointer"
-                  >
-                    <ChevronLeft size={22} className="stroke-[2.5]" />
-                  </button>
-                  <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center">
-                    <h2 className="text-xs font-bold text-slate-800 tracking-tight">
-                      {selectedSettingPartition === 'completeness' && '完整性校验配置 (Completeness)'}
-                      {selectedSettingPartition === 'uniqueness' && '唯一性防重主键配置 (Uniqueness)'}
-                      {selectedSettingPartition === 'accuracy' && '准确性值域规律校验 (Accuracy)'}
-                      {selectedSettingPartition === 'compliance' && '合规性政策法规红线 (Compliance)'}
-                    </h2>
-                  </div>
-                  <div className="w-10" />
-                </div>
-
+              <div className="flex-grow overflow-hidden flex flex-col bg-[#f7f7f7] animate-fade-in">
                 {/* Rules Customization details area */}
                 <div className="flex-grow overflow-y-auto px-5 py-4 pb-6 scrollbar-hide space-y-4">
 
@@ -2310,6 +2562,156 @@ export const MobileView: React.FC<MobileViewProps> = ({
                               );
                             })()}
                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 6. UNIAPP WORKSPACE CENTER VIEW */}
+                  {settingsSubTab === 'uniapp' && (
+                    <div className="space-y-4 animate-fade-in text-slate-800">
+                      {/* Introductory banner */}
+                      <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-2xl space-y-2">
+                        <div className="flex items-center gap-2 text-emerald-800">
+                          <Smartphone size={15} className="text-[#07c160] animate-pulse" />
+                          <span className="text-[11px] font-black">uni-app (Vue 3) 微信小程序工作台已就绪</span>
+                        </div>
+                        <p className="text-[9.5px] text-slate-600 font-semibold leading-relaxed">
+                          为满架手机端跨端微信生态，全套代码已基于最新 <span className="font-bold">Vue 3 (Composition API)</span> 进行微信底层对齐，完美融合 44px 原生手势与胶囊重载逻辑。
+                        </p>
+                        {/* Dynamic Live Variables Sync indicator */}
+                        <div className="p-2.5 bg-white rounded-xl border border-slate-100 flex flex-col gap-1.5 shadow-2xs">
+                          <span className="text-[8px] text-slate-400 font-bold uppercase tracking-wider font-mono flex items-center gap-1">
+                            <RefreshCw size={8} className="animate-spin text-emerald-500" />
+                            <span>物理主数据审计核心状态对账 (Live Syncing):</span>
+                          </span>
+                          <div className="space-y-1 text-[9px] font-bold text-slate-700">
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-400">必填主键:</span>
+                              <span className="font-mono text-[8.5px] text-emerald-700 bg-emerald-50/50 px-1 border border-emerald-100/55 rounded">
+                                {completenessKeyFields.join(' , ')}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-400">去重组合:</span>
+                              <span className="font-mono text-[8.5px] text-blue-700 bg-blue-50/50 px-1 border border-blue-100/55 rounded">
+                                {uniquenessKeyFields.map(g => `[${g.join('+')}]`).join(', ')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Code Explorer Structure */}
+                      <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-3xs flex flex-col">
+                        <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                          <span className="text-[10px] font-black text-slate-800 flex items-center gap-1.5">
+                            <Layers size={12} className="text-[#07c160]" />
+                            <span>小程序工程代码资源管理器</span>
+                          </span>
+                        </div>
+
+                        {/* File selector tree buttons */}
+                        <div className="p-2.5 bg-slate-50/50 border-b border-slate-100 flex flex-wrap gap-1.5">
+                          {[
+                            { name: 'index.vue', label: '📝 index.vue (核心体检页)' },
+                            { name: 'pages.json', label: '⚙️ pages.json' },
+                            { name: 'App.vue', label: '🌱 App.vue' },
+                            { name: 'package.json', label: '📦 package.json' },
+                            { name: 'main.js', label: '🚀 main.js' },
+                            { name: 'README.md', label: '📖 README.md' }
+                          ].map(file => (
+                            <button
+                              key={file.name}
+                              onClick={() => {
+                                setSelectedUniappFile(file.name);
+                                setCopiedFile(false);
+                              }}
+                              className={`px-2.5 py-1.5 rounded-xl text-[9px] font-bold transition-all border shrink-0 cursor-pointer ${
+                                selectedUniappFile === file.name
+                                  ? 'bg-[#edfbf3] text-[#07c160] border-[#bfeecf] shadow-3xs'
+                                  : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 shadow-3xs'
+                              }`}
+                            >
+                              {file.name}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* IDE Display Screen */}
+                        <div className="bg-[#0f141c] text-slate-350 font-mono text-[9px] overflow-hidden flex flex-col relative h-[360px] border-b border-slate-200">
+                          {/* File Header */}
+                          <div className="flex justify-between items-center p-2.5 bg-[#161b22] border-b border-slate-800 text-slate-400 shrink-0 select-text">
+                            <span className="text-[7.5px] font-bold text-slate-500 truncate max-w-[180px]">
+                              uniapp-mobile/{selectedUniappFile === 'index.vue' ? 'pages/index/index.vue' : selectedUniappFile}
+                            </span>
+                            <button
+                              onClick={() => {
+                                let content = '';
+                                if (selectedUniappFile === 'index.vue') {
+                                  content = getUniappIndexVue(completenessKeyFields, uniquenessKeyFields, selectedCategories);
+                                } else if (selectedUniappFile === 'pages.json') {
+                                  content = getUniappPagesJson();
+                                } else if (selectedUniappFile === 'App.vue') {
+                                  content = getUniappAppVue();
+                                } else if (selectedUniappFile === 'package.json') {
+                                  content = getUniappPackageJson();
+                                } else if (selectedUniappFile === 'main.js') {
+                                  content = getUniappMainJs();
+                                } else if (selectedUniappFile === 'README.md') {
+                                  content = getUniappReadme();
+                                }
+                                navigator.clipboard.writeText(content);
+                                setCopiedFile(true);
+                                setTimeout(() => setCopiedFile(false), 2000);
+                              }}
+                              className="px-2 py-1 bg-slate-800 hover:bg-slate-750 text-white rounded-lg text-[8px] border border-slate-700 font-bold cursor-pointer active:scale-95 flex items-center gap-1 shrink-0"
+                            >
+                              {copiedFile ? '✓ 已复制' : '📋 复制该文件'}
+                            </button>
+                          </div>
+
+                          {/* Code content scroll frame */}
+                          <div className="flex-grow overflow-y-auto p-3.5 scrollbar-hide text-left leading-relaxed text-slate-300 font-mono whitespace-pre select-text">
+                            {selectedUniappFile === 'index.vue' && getUniappIndexVue(completenessKeyFields, uniquenessKeyFields, selectedCategories)}
+                            {selectedUniappFile === 'pages.json' && getUniappPagesJson()}
+                            {selectedUniappFile === 'App.vue' && getUniappAppVue()}
+                            {selectedUniappFile === 'package.json' && getUniappPackageJson()}
+                            {selectedUniappFile === 'main.js' && getUniappMainJs()}
+                            {selectedUniappFile === 'README.md' && getUniappReadme()}
+                          </div>
+                        </div>
+
+                        {/* Export panel bottom toolbar */}
+                        <div className="p-3 bg-slate-50 flex items-center justify-between">
+                          <span className="text-[8px] text-slate-400 font-bold">微信绿色环境对撞兼容 · Vue 3 ESM</span>
+                          <button
+                            onClick={() => {
+                              const readmeContent = getUniappReadme();
+                              const blob = new Blob([readmeContent], { type: 'text/markdown;charset=utf-8' });
+                              const url = URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = 'uniapp-instructions.md';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="p-1 px-3 bg-[#07c160] hover:bg-[#06ad56] text-white rounded-xl text-[9.5px] font-bold cursor-pointer active:scale-95 flex items-center gap-1 shrink-0 animate-fade-in"
+                          >
+                            <span>📥 下载部署指南文本</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Execution workflow */}
+                      <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-2">
+                        <span className="text-[10px] font-black text-slate-800 block">⚡ 小程序导入至开发者工具</span>
+                        <div className="space-y-1.5 text-[9px] text-slate-500 font-bold leading-relaxed list-decimal pl-3">
+                          <div>1. 将 \`/uniapp-mobile\` 本地文件夹完整解包或导入至 **HBuilderX** 编辑器中。</div>
+                          <div>2. 确保在微信小程序开发者工具中，【设置】-【安全设置】下的【服务端口】已打开。</div>
+                          <div>3. 在 HBuilderX 菜单中，点击【运行】-&gt;【运行到小程序模拟器】-&gt;【微信开发者工具】。</div>
+                          <div>4. 编译开始并唤起微信模拟器，即可真机预览并上传发布！</div>
                         </div>
                       </div>
                     </div>
@@ -3042,8 +3444,8 @@ export const MobileView: React.FC<MobileViewProps> = ({
         config={mobileRepairConfig}
       />
 
-      {/* FOOTER NAVIGATION GRID CONTROLS FOR MOBILE NATIVE APP EXPERIENCE */}
-      <footer className="bg-white border-t border-slate-200 h-[68px] shrink-0 flex items-center justify-around px-1 relative z-40 pb-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
+      {/* FOOTER TABBAR - NATIVE WECHAT MINI PROGRAM EXPERIENCE */}
+      <footer className="bg-white/95 backdrop-blur-md border-t border-slate-150 h-[56px] shrink-0 flex items-center justify-around px-2 relative z-40 pb-safe shadow-[0_-1px_3px_rgba(0,0,0,0.02)]">
         
         {/* BUTTON 1: HOME PANEL */}
         <button
@@ -3051,49 +3453,77 @@ export const MobileView: React.FC<MobileViewProps> = ({
             setActiveTab('home');
             setHomeSubView('main');
           }}
-          className={`flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-2xl transition-all grow ${
-            activeTab === 'home' ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-400 hover:text-slate-600'
-          }`}
+          className="flex flex-col items-center justify-center gap-0.5 grow h-full border-0 bg-transparent cursor-pointer focus:outline-none"
         >
-          <Activity size={18} className={activeTab === 'home' ? 'text-blue-600' : 'text-slate-450 text-slate-400'} />
-          <span className="text-[9px] tracking-wide font-black uppercase mt-0.5">健康体检</span>
-        </button>
-
-        {/* BUTTON 3: BOT */}
-        <button
-          onClick={() => setActiveTab('ai')}
-          className={`flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-2xl transition-all relative grow ${
-            activeTab === 'ai' ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-400 hover:text-slate-600'
-          }`}
-        >
-          <MessageSquare size={18} className={activeTab === 'ai' ? 'text-blue-600' : 'text-slate-405 text-slate-400'} />
-          <span className="text-[9px] tracking-wide font-black uppercase mt-0.5">AI 助手</span>
-          <span className="absolute top-1.5 right-[24%] flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+          <Activity 
+            size={20} 
+            className={`transition-colors ${
+              activeTab === 'home' ? 'text-[#07c160] stroke-[2.2]' : 'text-[#888888] stroke-[1.8]'
+            }`} 
+          />
+          <span className={`text-[10px] font-bold mt-0.5 ${
+            activeTab === 'home' ? 'text-[#07c160]' : 'text-[#888888]'
+          }`}>
+            健康体检
           </span>
         </button>
 
-        {/* BUTTON 4: CONFIG REGULATORS */}
+        {/* BUTTON 2: BOT */}
         <button
-          onClick={() => setActiveTab('settings')}
-          className={`flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-2xl transition-all grow ${
-            activeTab === 'settings' ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-400 hover:text-slate-600'
-          }`}
+          onClick={() => setActiveTab('ai')}
+          className="flex flex-col items-center justify-center gap-0.5 grow h-full relative border-0 bg-transparent cursor-pointer focus:outline-none"
         >
-          <Sliders size={18} className={activeTab === 'settings' ? 'text-blue-600' : 'text-slate-400'} />
-          <span className="text-[9px] tracking-wide font-black uppercase mt-0.5">规则引擎</span>
+          <MessageSquare 
+            size={20} 
+            className={`transition-colors ${
+              activeTab === 'ai' ? 'text-[#07c160] stroke-[2.2]' : 'text-[#888888] stroke-[1.8]'
+            }`} 
+          />
+          <span className={`text-[10px] font-bold mt-0.5 ${
+            activeTab === 'ai' ? 'text-[#07c160]' : 'text-[#888888]'
+          }`}>
+            AI 助手
+          </span>
+          <span className="absolute top-2.5 right-[28%] flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#07c160] opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#07c160]"></span>
+          </span>
         </button>
 
-        {/* BUTTON 5: PERSONAL PROFILE PANEL */}
+        {/* BUTTON 3: CONFIG REGULATORS */}
+        <button
+          onClick={() => setActiveTab('settings')}
+          className="flex flex-col items-center justify-center gap-0.5 grow h-full border-0 bg-transparent cursor-pointer focus:outline-none"
+        >
+          <Sliders 
+            size={20} 
+            className={`transition-colors ${
+              activeTab === 'settings' ? 'text-[#07c160] stroke-[2.2]' : 'text-[#888888] stroke-[1.8]'
+            }`} 
+          />
+          <span className={`text-[10px] font-bold mt-0.5 ${
+            activeTab === 'settings' ? 'text-[#07c160]' : 'text-[#888888]'
+          }`}>
+            规则引擎
+          </span>
+        </button>
+
+        {/* BUTTON 4: PERSONAL PROFILE PANEL */}
         <button
           onClick={() => setActiveTab('profile')}
-          className={`flex flex-col items-center justify-center gap-1 px-3 py-1.5 rounded-2xl transition-all grow ${
-            activeTab === 'profile' ? 'text-blue-600 font-extrabold scale-105' : 'text-slate-400 hover:text-slate-600'
-          }`}
+          className="flex flex-col items-center justify-center gap-0.5 grow h-full border-0 bg-transparent cursor-pointer focus:outline-none"
         >
-          <User size={18} className={activeTab === 'profile' ? 'text-blue-600' : 'text-slate-405 text-slate-400'} />
-          <span className="text-[9px] tracking-wide font-black uppercase mt-0.5">个人中心</span>
+          <User 
+            size={20} 
+            className={`transition-colors ${
+              activeTab === 'profile' ? 'text-[#07c160] stroke-[2.2]' : 'text-[#888888] stroke-[1.8]'
+            }`} 
+          />
+          <span className={`text-[10px] font-bold mt-0.5 ${
+            activeTab === 'profile' ? 'text-[#07c160]' : 'text-[#888888]'
+          }`}>
+            个人中心
+          </span>
         </button>
 
       </footer>

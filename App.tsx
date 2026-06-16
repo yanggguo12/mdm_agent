@@ -313,6 +313,12 @@ const App = () => {
             onLoad={handleLoadHistory}
             onDelete={handleDeleteHistory}
           />
+          <RawDataModal
+            isOpen={!!rawDataSource}
+            onClose={() => setRawDataSource(null)}
+            sourceName={rawDataSource || ''}
+            data={appData.data}
+          />
         </>
       ) : (
         <motion.div
