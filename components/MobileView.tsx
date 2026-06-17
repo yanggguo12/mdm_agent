@@ -6,7 +6,7 @@ import {
   CheckCircle2, Database, Wand2, Volume2, Settings, ListFilter,
   Check, Info, ChevronDown, Layers, Laptop, ShieldAlert, ArrowRight,
   Sliders, Shield, ClipboardList, RefreshCw, Sparkle, Smartphone, LogOut,
-  TrendingUp, Calculator
+  TrendingUp, Calculator, FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DataIssue, HealthMetric, ScanHistoryItem } from '../types';
@@ -354,6 +354,123 @@ export const MobileView: React.FC<MobileViewProps> = ({
     begztEndzt: true,
     calendarCheck: true
   });
+
+  // 1:1 Search & Configuration States for the 4 quality indicators
+  const [completenessSearchQuery, setCompletenessSearchQuery] = useState('');
+  const [uniquenessSearchQuery, setUniquenessSearchQuery] = useState('');
+  
+  // Accuracy rules dynamic state
+  const [accuracyRules, setAccuracyRules] = useState<any[]>([
+    { 
+      id: 'rule-1', 
+      type: 'physical', 
+      title: 'BRGEW > NTGEW 常识对等控制', 
+      desc: '验证物理毛重项目必须大于对应的自选净重字段，防范逻辑越界', 
+      config: { fieldA: 'BRGEW', operator: '>', fieldB: 'NTGEW' } 
+    },
+    { 
+      id: 'rule-2', 
+      type: 'mapping', 
+      title: '物料类型 (MTART) 与评估类 (BKLAS) 关联映射', 
+      desc: '若物料类型为 ROH（原材料），校验对应工厂评估类是否属于 3000 主流范围', 
+      config: { ifField: 'MTART', ifValue: 'ROH', thenField: 'BKLAS', thenOperator: '==', thenValue: '3000' } 
+    }
+  ]);
+  
+  // Accuracy Knowledge file states
+  const [accuracySearchQuery, setAccuracySearchQuery] = useState('');
+  const [accuracyDocs, setAccuracyDocs] = useState([
+    { id: 'acc1', name: '物料主数据规范_v2.pdf', active: true }
+  ]);
+  const [showAccuracyExtracted, setShowAccuracyExtracted] = useState(true);
+  const [accuracySelectedRuleId, setAccuracySelectedRuleId] = useState<string | null>(null);
+
+  // Compliance Dual-ring document states
+  const [complianceActiveFilter, setComplianceActiveFilter] = useState<'external' | 'internal' | null>(null);
+  const [complianceDocs, setComplianceDocs] = useState({
+    external: [
+      { id: 'ext1', name: '2026海关税则目录.pdf', rules: 2 },
+      { id: 'ext2', name: 'RoHS环保标准指引.docx', rules: 2 }
+    ],
+    internal: [
+      { id: 'int1', name: '主数据命名规范_V3.pdf', rules: 2 },
+      { id: 'int2', name: '物料与图纸关联管理办法.docx', rules: 1 }
+    ]
+  });
+  const [complianceRulesList, setComplianceRulesList] = useState<any[]>([
+    { 
+      id: 'r1', 
+      type: 'external', 
+      title: '海关税号 (STEUC) 有效性校验', 
+      desc: '验证申报税号是否属于 2026 最新进出口税则目录范围', 
+      action: 'API 模糊匹配',
+      logic: '将企业物料的 Steuer-ID 与 2026 海关税则数据库进行对撞。若匹配度低于 95% 或税号已失效，则标记为违规。',
+      sourceDoc: '2026海关税则目录.pdf',
+      severity: '致命 (Blocking)'
+    },
+    { 
+      id: 'r5', 
+      type: 'external', 
+      title: 'HS Code 归类一致性审计', 
+      desc: '检查相同类别的物料是否使用了统一的统计编码', 
+      action: '聚类分析',
+      logic: '通过 AI 对 MATKL (物料组) 进行聚类，检测群组内的 HS Code 离散度。方差过大则提示归类风险。',
+      sourceDoc: '2026海关税则目录.pdf',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r2', 
+      type: 'external', 
+      title: '环保认证有效期库', 
+      desc: '检查物料是否有最新环保认证', 
+      action: '跨系统验证',
+      logic: '抓取 SRM 系统中的供应商证书附件，识别 RoHS/REACH 证书的截止日期。若日期小于当前时间，则自动触发冻结状态。',
+      sourceDoc: 'RoHS环保标准指引.docx',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r6', 
+      type: 'external', 
+      title: '有害物质清单 (SoP) 强控', 
+      desc: '核对物料 BMG (成分清单) 是否包含禁限物质', 
+      action: '物性对撞',
+      logic: '比对成分清单与 RoHS 6+10 物质限值。',
+      sourceDoc: 'RoHS环保标准指引.docx',
+      severity: '致命 (Blocking)'
+    },
+    { 
+      id: 'r3', 
+      type: 'internal', 
+      title: '命名规范逻辑检查', 
+      desc: '验证描述结构物料是否符合“品名+规格”的顺序', 
+      action: 'LLM 语义分析',
+      logic: '利用大模型对 MAKTX 字段进行语义分词。验证分词结构是否满足 [Noun] + [Spec] + [Material] 的排列模型。针对不匹配项给出修复建议。',
+      sourceDoc: '主数据命名规范_V3.pdf',
+      severity: '中危 (Medium)'
+    },
+    { 
+      id: 'r7', 
+      type: 'internal', 
+      title: '单位 (MEINS) 与描述逻辑匹配', 
+      desc: '检查基本计量单位是否与其物理属性（重量、长度、件数）一致', 
+      action: '逻辑推演',
+      logic: '若描述包含 "电缆", 单位应为 "M" 或 "FT"，而非 "EA"。若不符则标记为属性错乱。',
+      sourceDoc: '主数据命名规范_V3.pdf',
+      severity: '高危 (Critical)'
+    },
+    { 
+      id: 'r4', 
+      type: 'internal', 
+      title: '图纸附件关联系统检查', 
+      desc: '核心生产物料关联图纸是否齐全', 
+      action: '关联性校验',
+      logic: '查询 PLM 系统的物料关联清单 (EBOM)。若物料属性为 "Make" 且关联文档列表为空，则记录为完整性缺失。',
+      sourceDoc: '物料与图纸关联管理办法.docx',
+      severity: '警告 (Warning)'
+    }
+  ]);
+  const [complianceActiveSelectedRuleId, setComplianceActiveSelectedRuleId] = useState<string | null>(null);
+  const [complianceActiveSelectedFileDoc, setComplianceActiveSelectedFileDoc] = useState<string | null>(null);
 
   // Keep digital clock updating normally like actual phones
   useEffect(() => {
@@ -2005,7 +2122,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
               />
               <button
                 onClick={() => handleMobileChatSend()}
-                className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl active:scale-95 text-xs flex items-center justify-center shrink-0 shadow-md shadow-blue-100"
+                className="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl active:scale-95 text-xs flex items-center justify-center shrink-0 shadow-md shadow-blue-100 cursor-pointer"
               >
                 <Send size={14} />
               </button>
@@ -2019,7 +2136,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
           <div className="flex-grow overflow-hidden flex flex-col pt-0 bg-[#f7f7f7] h-full w-full">
             {selectedSettingPartition === null ? (
               /* WeChat Operational Cell-Group style settings */
-              <div className="flex-grow overflow-y-auto px-4 py-4 pb-8 scrollbar-hide space-y-4 animate-fade-in">
+              <div className="flex-grow overflow-y-auto px-4 py-4 pb-8 scrollbar-hide space-y-4 animate-fade-in text-slate-800">
                 
                 {/* WeChat Operation Group Label */}
                 <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wide px-1">
@@ -2031,7 +2148,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   {[
                     {
                       id: 'completeness',
-                      name: '完整性规则校验',
+                      name: '指标完整性规则配置',
                       nameEn: 'Completeness',
                       icon: <CheckCircle2 size={16} className="text-[#07c160]" />,
                       color: 'bg-emerald-50 text-[#07c160]',
@@ -2040,7 +2157,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                     },
                     {
                       id: 'uniqueness',
-                      name: '唯一性防重主键',
+                      name: '指标唯一性规则配置',
                       nameEn: 'Uniqueness',
                       icon: <Layers size={16} className="text-blue-500" />,
                       color: 'bg-blue-50 text-blue-500',
@@ -2049,30 +2166,21 @@ export const MobileView: React.FC<MobileViewProps> = ({
                     },
                     {
                       id: 'accuracy',
-                      name: '准确性值域常识',
+                      name: '指标准确性规则配置',
                       nameEn: 'Accuracy',
                       icon: <Activity size={16} className="text-amber-500" />,
                       color: 'bg-amber-50 text-amber-550',
-                      desc: '管控物理值域极限制约及毛重净重常识，保障财务金额及参数高度贴合。',
+                      desc: '管控物理值域极极限值或常识校验，实时拦截倒挂，保障属性可信度。',
                       activeRules: '物理边界限制、毛重常识等 3 大算子稳定监视',
                     },
                     {
                       id: 'compliance',
-                      name: '合规性内外双环',
+                      name: '指标合规性规则配置',
                       nameEn: 'Compliance',
                       icon: <ShieldCheck size={16} className="text-violet-500" />,
                       color: 'bg-violet-50 text-violet-500',
-                      desc: '内置海关STEUC税号通关认证，并与RoHS证书期限在出口前完成双重过滤审计。',
-                      activeRules: '海关税号归档、RoHS危化物及分词 4 项安全红线启用',
-                    },
-                    {
-                      id: 'uniapp',
-                      name: '🍀 uni-app 小程序源码中心',
-                      nameEn: 'uni-app SDK',
-                      icon: <Smartphone size={16} className="text-[#07c160]" />,
-                      color: 'bg-emerald-50 text-[#07c160]',
-                      desc: '浏览、测试及一键复制 Vue 3 高仿真客户端原生打包运行工程包代码。',
-                      activeRules: '物理主数据核心对仗引擎同步搭载',
+                      desc: 'AI 提取双向海关法治红线及 RoHS 成分审核对账。',
+                      activeRules: '对外红线对撞、RoHS环保及英文命名等安全红线启用',
                     }
                   ].map(mod => (
                     <button
@@ -2105,20 +2213,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                       <ChevronRight size={14} className="text-slate-350 shrink-0" />
                     </button>
                   ))}
-                </div>
 
-                {/* WeChat style Page footer to fill space beautifully */}
-                <div className="pt-16 pb-6 space-y-1 text-center px-4">
-                  <div className="flex items-center justify-center gap-1 text-[10px] font-bold text-slate-400">
-                    <Bot size={11} className="text-slate-450 text-slate-400" />
-                    <span>智联云数据治理终端微应用</span>
-                  </div>
-                  <p className="text-[9px] text-slate-400 max-w-[280px] mx-auto leading-relaxed">
-                    基于主数据智能自愈大脑研发。所有规则与参数均与后台 ERP 系统物理表实现安全同舟。
-                  </p>
-                  <p className="text-[8px] text-slate-350 font-mono">
-                    CLIENT PROTOCOL VERSION WeChat-1.2.5
-                  </p>
                 </div>
 
               </div>
@@ -2130,73 +2225,110 @@ export const MobileView: React.FC<MobileViewProps> = ({
 
                   {/* 1. COMPLETENESS CHECKLIST */}
                   {settingsSubTab === 'completeness' && (
-                    <div className="space-y-3.5 animate-fade-in">
-                      <div className="bg-gradient-to-br from-blue-50/40 via-white to-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-3">
+                    <div className="space-y-4 animate-fade-in">
+                      {/* Web View Header Translation Card */}
+                      <div className="bg-gradient-to-br from-emerald-50/50 via-white to-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 size={15} className="text-[#07c160]" />
+                          <h3 className="text-xs font-black text-slate-800 leading-tight">配置关键属性 (完整性校验)</h3>
+                        </div>
+                        <p className="text-[9.5px] text-slate-500 font-bold leading-relaxed">
+                          勾选的字段将被视为关键字段。如果记录中任意一个关键字段为空，则该记录将被判定为不完整。
+                        </p>
+                      </div>
+
+                      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-3.5 animate-fade-in animate-duration-150">
                         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
-                            <CheckCircle2 size={13} className="text-emerald-500" />
-                            <span>1. 物理字段必填字段目录</span>
+                            <CheckCircle2 size={13} className="text-[#07c160]" />
+                            <span>1. 物理字段完整性强控目录</span>
                           </span>
                           <span className="text-[9px] font-mono text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-black border border-emerald-100/50">
-                            {completenessKeyFields.length} 项有效
+                            {completenessKeyFields.length} 项必填已生效
                           </span>
                         </div>
 
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => {
-                              const all = Object.values(CATEGORY_FIELD_GROUPS).flat();
-                              onSaveCompletenessFields(all);
-                            }}
-                            className="text-[9.5px] font-black text-blue-600 bg-blue-50/65 px-2.5 py-1 rounded-md border border-blue-100/50 hover:bg-blue-100/50 transition-colors"
-                          >
-                            全选
-                          </button>
-                          <button
-                            onClick={() => onSaveCompletenessFields([])}
-                            className="text-[9.5px] font-black text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/80 hover:bg-slate-100/50 transition-colors"
-                          >
-                            清空
-                          </button>
+                        {/* Search and Tool Buttons */}
+                        <div className="space-y-2.5">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="轻触检索 70+ 核心工业字典字段及描述..."
+                              value={completenessSearchQuery}
+                              onChange={(e) => setCompletenessSearchQuery(e.target.value)}
+                              className="w-full text-[10px] px-3.5 py-2 border border-slate-250 bg-white rounded-xl outline-none focus:ring-2 focus:ring-emerald-500 font-bold transition-all shadow-3xs text-slate-800"
+                            />
+                            {completenessSearchQuery && (
+                              <button 
+                                onClick={() => setCompletenessSearchQuery('')}
+                                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 font-bold text-xs cursor-pointer"
+                              >
+                                清除
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                onSaveCompletenessFields(MARA_FIELDS);
+                              }}
+                              className="flex-1 text-[10px] font-black text-emerald-600 bg-emerald-50 py-2 rounded-xl border border-emerald-200 hover:bg-emerald-100/50 transition-colors cursor-pointer text-center"
+                            >
+                              全选
+                            </button>
+                            <button
+                              onClick={() => {
+                                onSaveCompletenessFields([]);
+                              }}
+                              className="flex-1 text-[10px] font-black text-rose-600 bg-rose-50 py-2 rounded-xl border border-rose-200 hover:bg-rose-100/50 transition-colors cursor-pointer text-center"
+                            >
+                              取消全选
+                            </button>
+                          </div>
                         </div>
 
-                        <div className="space-y-4 mt-2">
-                          {Object.entries(CATEGORY_FIELD_GROUPS).map(([groupName, fields]) => (
-                            <div key={groupName} className="space-y-1.5">
-                              <span className="text-[8.5px] text-slate-400 font-extrabold tracking-widest uppercase">{groupName} 模块</span>
-                              <div className="grid grid-cols-2 gap-2">
-                                {fields.map(field => {
-                                  const isChecked = completenessKeyFields.includes(field);
-                                  return (
-                                    <button
-                                      key={field}
-                                      onClick={() => {
-                                        const updated = isChecked
-                                          ? completenessKeyFields.filter(f => f !== field)
-                                          : [...completenessKeyFields, field];
-                                        onSaveCompletenessFields(updated);
-                                      }}
-                                      className={`p-2 rounded-xl border flex items-center gap-1.5 text-left font-bold transition-all cursor-pointer ${
-                                        isChecked
-                                          ? 'bg-blue-50/70 text-blue-600 border-blue-200 shadow-3xs'
-                                          : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 shadow-3xs'
-                                      }`}
-                                    >
-                                      <div className={`w-3 h-3 border rounded flex items-center justify-center shrink-0 ${
-                                        isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300'
-                                      }`}>
-                                        {isChecked && <Check size={8} />}
-                                      </div>
-                                      <div className="flex flex-col min-w-0">
-                                        <span className="truncate text-slate-800 font-semibold font-mono text-[9.5px]">{field}</span>
-                                        <span className="text-[7.5px] opacity-70 font-semibold truncate text-slate-505 text-slate-500">{MARA_FIELD_DESCRIPTIONS[field] || field}</span>
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          ))}
+                        {/* Flat Field List */}
+                        <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                          <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            {MARA_FIELDS.filter(field => 
+                              field.toLowerCase().includes(completenessSearchQuery.toLowerCase()) ||
+                              (MARA_FIELD_DESCRIPTIONS[field] || '').toLowerCase().includes(completenessSearchQuery.toLowerCase())
+                            ).map(field => {
+                              const isChecked = completenessKeyFields.includes(field);
+                              const desc = MARA_FIELD_DESCRIPTIONS[field] || field;
+                              return (
+                                <button
+                                  key={field}
+                                  onClick={() => {
+                                    const updated = isChecked 
+                                      ? completenessKeyFields.filter(f => f !== field)
+                                      : [...completenessKeyFields, field];
+                                    onSaveCompletenessFields(updated);
+                                  }}
+                                  className={`p-2 rounded-xl border flex items-center gap-1.5 text-left font-bold transition-all cursor-pointer ${
+                                    isChecked 
+                                      ? 'border-blue-500 bg-blue-50/50 shadow-3xs text-blue-600' 
+                                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 shadow-3xs'
+                                  }`}
+                                >
+                                  <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-colors flex-shrink-0 ${
+                                    isChecked ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-300 bg-white'
+                                  }`}>
+                                    {isChecked && <Check size={10} />}
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className={`truncate font-mono text-[9.5px] ${isChecked ? 'text-blue-900 font-bold' : 'text-slate-800'}`}>
+                                      {field}
+                                    </span>
+                                    <span className={`text-[7.5px] truncate mt-0.5 leading-none ${isChecked ? 'text-blue-600' : 'text-slate-500'}`}>
+                                      {desc}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2205,12 +2337,23 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   {/* 2. UNIQUENESS CHECKLIST */}
                   {settingsSubTab === 'uniqueness' && (
                     <div className="space-y-4 animate-fade-in animate-duration-150">
+                      {/* Web View Header Translation Card */}
+                      <div className="bg-gradient-to-br from-blue-50/50 via-white to-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-1.5 animate-fade-in animate-duration-150">
+                        <div className="flex items-center gap-2">
+                          <Layers size={15} className="text-blue-500" />
+                          <h3 className="text-xs font-black text-slate-800 leading-tight">配置关键属性 (唯一性校验)</h3>
+                        </div>
+                        <p className="text-[9.5px] text-slate-500 font-bold leading-relaxed">
+                          通过勾选字段并添加为“唯一性规则”（单字段或复合键）来确保数据不重复。
+                        </p>
+                      </div>
+
                       {/* Active Rules List */}
                       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3.5 shadow-3xs">
                         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <Layers size={13} className="text-indigo-500" />
-                            <span>1. 一物多码防重主键规则</span>
+                            <span>1. 一物多码防重主键规则 (Active Rules)</span>
                           </span>
                           <span className="text-[9px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-black border border-indigo-100/50">
                             {uniquenessKeyFields.length} 校验组已加载
@@ -2223,24 +2366,30 @@ export const MobileView: React.FC<MobileViewProps> = ({
                               key={index}
                               className="p-2.5 bg-slate-50 border border-slate-200/60 rounded-xl flex items-center justify-between text-[10px] font-bold"
                             >
-                              <div className="flex flex-wrap items-center gap-1 min-w-0">
-                                {group.map((f, compIdx) => (
-                                  <React.Fragment key={compIdx}>
-                                    <span className="text-[9px] font-mono font-bold text-slate-700 bg-white border border-slate-200 px-1.5 py-0.5 rounded shadow-3xs">
-                                      {f} ({MARA_FIELD_DESCRIPTIONS[f] || f})
-                                    </span>
-                                    {compIdx < group.length - 1 && <span className="text-slate-400 text-xs">+</span>}
-                                  </React.Fragment>
-                                ))}
+                              <div className="flex flex-col gap-1 min-w-0 flex-1 pr-2">
+                                <div className="text-[8px] uppercase font-black text-slate-400 tracking-wider">
+                                  {group.length > 1 ? '复合关联物理主键 (Composite Key)' : '单维唯一性控制 (Single Key)'}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                  {group.map((f, compIdx) => (
+                                    <React.Fragment key={compIdx}>
+                                      <span className="text-[9px] font-mono font-bold text-[#312e81] bg-indigo-50/50 border border-indigo-100 px-1.5 py-0.5 rounded shadow-3xs">
+                                        {f} ({MARA_FIELD_DESCRIPTIONS[f] || f})
+                                      </span>
+                                      {compIdx < group.length - 1 && <span className="text-indigo-400 text-xs">+</span>}
+                                    </React.Fragment>
+                                  ))}
+                                </div>
                               </div>
                               <button
                                 onClick={() => {
                                   const updated = uniquenessKeyFields.filter((_, i) => i !== index);
                                   onSaveUniquenessFields(updated);
                                 }}
-                                className="p-1 px-1.5 rounded text-rose-500 hover:text-rose-600 hover:bg-rose-50 border border-rose-100/20 shadow-3xs cursor-pointer active:scale-95 shrink-0 animate-fade-in"
+                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-600 hover:bg-rose-50 border border-rose-100/50 shadow-3xs cursor-pointer active:scale-95 shrink-0 animate-fade-in"
+                                title="删除此规则"
                               >
-                                <Trash2 size={11} />
+                                <Trash2 size={12} />
                               </button>
                             </div>
                           ))}
@@ -2248,64 +2397,107 @@ export const MobileView: React.FC<MobileViewProps> = ({
                       </div>
 
                       {/* Rule Creation builder */}
-                      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs">
+                      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs animate-fade-in">
                         <div>
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <Plus size={13} className="text-blue-500" />
-                            <span>2. 快速创建防重/唯一性组合</span>
+                            <span>2. 拼装防重/复合物理主键 (1:1 工作台)</span>
                           </span>
                           <p className="text-[9px] text-slate-400 font-bold mt-1">
-                            选择一个或多个字段，来自动生成唯一性或联合唯一校验防御组合。
+                            在下方快捷筛选中轻触需要合并字段，点击下方按钮一键打包配置。
                           </p>
                         </div>
 
-                        {/* Selected fields tags pending creation */}
-                        <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 rounded-xl min-h-[36px] items-center border border-dashed border-slate-200">
-                          {isBuildingGroup.length === 0 ? (
-                            <span className="text-[9px] text-slate-400 font-bold pl-1.5">点击下方按钮可点选合并多字段...</span>
-                          ) : (
-                            isBuildingGroup.map(field => (
-                              <span key={field} className="flex items-center gap-1 bg-blue-100 text-blue-700 text-[8.5px] px-1.5 py-0.5 rounded font-black border border-blue-200 shadow-3xs animate-fade-in font-mono">
-                                {field}
-                                <button onClick={() => setIsBuildingGroup(isBuildingGroup.filter(f => f !== field))}>
-                                  <X size={9} className="hover:text-red-500" />
-                                </button>
-                              </span>
-                            ))
-                          )}
+                        {/* Search and Selection building Area */}
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <input
+                              type="text"
+                              placeholder="检索 70+ 内核字根字段（如 MATNR 或 MAKTX）..."
+                              value={uniquenessSearchQuery}
+                              onChange={(e) => setUniquenessSearchQuery(e.target.value)}
+                              className="w-full text-[10px] px-3.5 py-2 border border-slate-250 bg-white rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold transition-all shadow-3xs"
+                            />
+                            {uniquenessSearchQuery && (
+                              <button 
+                                onClick={() => setUniquenessSearchQuery('')}
+                                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 font-bold text-xs"
+                              >
+                                清除
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Selected fields tags pending creation */}
+                          <div className="flex flex-wrap gap-1.5 p-2.5 bg-indigo-50/20 rounded-xl min-h-[44px] items-center border border-dashed border-indigo-200">
+                            {isBuildingGroup.length === 0 ? (
+                              <div className="flex items-center gap-1 pl-1 text-[9px] text-indigo-500 font-bold">
+                                <Info size={11} />
+                                <span>组合框临时清空：请点击下方字段组件加入拼装...</span>
+                              </div>
+                            ) : (
+                              isBuildingGroup.map(field => (
+                                <span key={field} className="flex items-center gap-1 bg-blue-100 text-[#1d4ed8] text-[8.5px] px-1.5 py-0.5 rounded font-black border border-blue-200 shadow-3xs animate-fade-in font-mono">
+                                  {field} ({MARA_FIELD_DESCRIPTIONS[field] || '未知'})
+                                  <button onClick={() => setIsBuildingGroup(isBuildingGroup.filter(f => f !== field))}>
+                                    <X size={9} className="hover:text-red-500 shrink-0 cursor-pointer" />
+                                  </button>
+                                </span>
+                              ))
+                            )}
+                          </div>
                         </div>
 
-                        {/* List of selectables */}
-                        <div className="grid grid-cols-3 gap-1.5 pt-1">
-                          {['MATNR', 'MAKTX', 'BISMT', 'MTART', 'MATKL', 'MEINS', 'BRGEW', 'NTGEW', 'GEWEI'].map(f => {
-                            const selected = isBuildingGroup.includes(f);
-                            return (
-                              <button
-                                key={f}
-                                onClick={() => {
-                                  if (selected) {
-                                    setIsBuildingGroup(isBuildingGroup.filter(field => field !== f));
-                                  } else {
-                                    setIsBuildingGroup([...isBuildingGroup, f]);
-                                  }
-                                }}
-                                className={`px-2 py-1.5 text-[9.5px] font-black rounded-lg border text-center transition-all ${
-                                  selected 
-                                    ? 'bg-blue-50 text-blue-600 border-blue-200' 
-                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                                }`}
-                              >
-                                {f}
-                              </button>
-                            );
-                          })}
+                        {/* Tool Buttons for Builder Selection */}
+                        {isBuildingGroup.length > 0 && (
+                          <button
+                            onClick={() => setIsBuildingGroup([])}
+                            className="w-full py-1.5 border border-indigo-200 text-indigo-600 bg-indigo-50/50 text-[9.5px] font-black rounded-xl hover:bg-indigo-100/30 transition-colors cursor-pointer"
+                          >
+                            清空当前已选项
+                          </button>
+                        )}
+
+                        {/* List of selectables (searchable Candidates from entire MARA_FIELDS) */}
+                        <div className="space-y-2">
+                          <p className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">可选字段候选池 (点击可多选或反选)</p>
+                          <div className="grid grid-cols-2 gap-1.5 max-h-[180px] overflow-y-auto pr-1">
+                            {MARA_FIELDS
+                              .filter(f => 
+                                f.toLowerCase().includes(uniquenessSearchQuery.toLowerCase()) ||
+                                (MARA_FIELD_DESCRIPTIONS[f] || '').toLowerCase().includes(uniquenessSearchQuery.toLowerCase())
+                              )
+                              .map(f => {
+                                const selected = isBuildingGroup.includes(f);
+                                return (
+                                  <button
+                                    key={f}
+                                    onClick={() => {
+                                      if (selected) {
+                                        setIsBuildingGroup(isBuildingGroup.filter(field => field !== f));
+                                      } else {
+                                        setIsBuildingGroup([...isBuildingGroup, f]);
+                                      }
+                                    }}
+                                    className={`p-2 text-[9.5px] font-black rounded-xl border text-left truncate transition-all cursor-pointer flex flex-col justify-center shadow-3xs ${
+                                      selected 
+                                        ? 'bg-blue-50 text-blue-600 border-blue-300 ring-1 ring-blue-100' 
+                                        : 'bg-white text-slate-600 border-slate-200/80 hover:bg-slate-50'
+                                    }`}
+                                    title={MARA_FIELD_DESCRIPTIONS[f] || f}
+                                  >
+                                    <div className="font-mono text-[10px] text-slate-800">{f}</div>
+                                    <div className="text-[7.5px] text-slate-500 opacity-80 truncate mt-0.5 leading-none">{MARA_FIELD_DESCRIPTIONS[f] || f}</div>
+                                  </button>
+                                );
+                              })}
+                          </div>
                         </div>
 
                         {/* Create action button */}
                         <button
                           onClick={() => {
                             if (isBuildingGroup.length === 0) return;
-                            // Check if duplicate
                             const sortedNew = [...isBuildingGroup].sort().join('|');
                             const exists = uniquenessKeyFields.some(g => [...g].sort().join('|') === sortedNew);
                             if (!exists) {
@@ -2314,70 +2506,255 @@ export const MobileView: React.FC<MobileViewProps> = ({
                             setIsBuildingGroup([]);
                           }}
                           disabled={isBuildingGroup.length === 0}
-                          className="w-full mt-1.5 py-2 hover:bg-blue-700 text-white bg-blue-600 text-[10px] font-black rounded-xl shadow-xs hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          className="w-full mt-1.5 py-2.5 hover:bg-blue-700 text-white bg-blue-600 text-[10px] font-black rounded-xl shadow-xs hover:shadow-md disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-1 cursor-pointer"
                         >
                           <Plus size={11} /> 
-                          确认并创建此防重物理主键组合
+                          确认并将拼装字段添加为防重规则
                         </button>
                       </div>
                     </div>
                   )}
 
+
                   {/* 3. ACCURACY CHECKLIST */}
                   {settingsSubTab === 'accuracy' && (
                     <div className="space-y-4 animate-fade-in">
-                      {/* Active Rules & Toggles Group */}
+                      {/* Web View Header Translation Card */}
+                      <div className="bg-gradient-to-br from-amber-50/50 via-white to-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-1.5 animate-fade-in">
+                        <div className="flex items-center gap-2">
+                          <Activity size={15} className="text-amber-500" />
+                          <h3 className="text-xs font-black text-slate-800 leading-tight">准确性配置工作台 (Accuracy Config Studio)</h3>
+                        </div>
+                        <p className="text-[9.5px] text-slate-500 font-bold leading-relaxed">
+                          定义数据准确性校验规则，支持 AI 知识注入与实时模拟。
+                        </p>
+                      </div>
+
+                      {/* Section 1: Ingestion Knowledge Files & AI extraction Rules */}
+                      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
+                            <Database size={13} className="text-amber-500" />
+                            <span>1. 关联认知注入区 (Knowledge Files)</span>
+                          </span>
+                          <span className="text-[9px] font-bold text-amber-600 font-mono">1 份规约已载入</span>
+                        </div>
+
+                        {/* Drag and Drop Box Mock */}
+                        <div className="border border-dashed border-slate-200 rounded-xl p-3 bg-slate-50/50 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-slate-50 transition-colors">
+                          <Wand2 size={16} className="text-amber-500 mb-1" />
+                          <span className="text-[9px] font-bold text-slate-600">点击或将工业参数文档拖入此处</span>
+                          <span className="text-[7.5px] text-slate-400 mt-0.5">AI 将实时解析提炼对等映射和控制公式</span>
+                        </div>
+
+                        {/* Ingested File Details */}
+                        <div className="space-y-2">
+                          <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                            <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200/50">
+                              <span className="text-[9.5px] font-black text-slate-700 flex items-center gap-1">
+                                <CheckCircle2 size={11} className="text-emerald-500" />
+                                <span>物料主数据规范_v2.pdf</span>
+                              </span>
+                              <span className="text-[8px] font-mono bg-amber-50 text-amber-700 px-1 border border-amber-100 rounded">AI 核心提炼 4 条</span>
+                            </div>
+
+                            {/* Extracted Rules Under Pdf */}
+                            <div className="space-y-1.5">
+                              {/* Rule Item 1 */}
+                              <div className="p-1.5 bg-white border border-slate-200/60 rounded-lg flex items-center justify-between text-[9px]">
+                                <div className="space-y-0.5">
+                                  <div className="font-extrabold text-[#475569]">物料类型 ➔ 评估类约束 (Mapping)</div>
+                                  <div className="font-mono text-[8px] text-slate-400">MTART="ROH" ➔ BKLAS="3000"</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const exists = accuracyRules.some(r => r.id === 'rule-extracted-1');
+                                    if (!exists) {
+                                      setAccuracyRules([...accuracyRules, {
+                                        id: 'rule-extracted-1',
+                                        type: 'mapping',
+                                        title: '物料类型 ROH 与评估类 3000 一致性',
+                                        desc: '由 AI 自动生成自 "物料主数据规范_v2.pdf"',
+                                        config: { ifField: 'MTART', ifValue: 'ROH', thenField: 'BKLAS', thenOperator: '==', thenValue: '3000' }
+                                      }]);
+                                    }
+                                  }}
+                                  className="text-[8px] px-1.5 py-0.5 font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded hover:bg-emerald-100/50 transition-colors"
+                                >
+                                  点选导入
+                                </button>
+                              </div>
+
+                              {/* Rule Item 2 */}
+                              <div className="p-1.5 bg-white border border-slate-200/60 rounded-lg flex items-center justify-between text-[9px]">
+                                <div className="space-y-0.5">
+                                  <div className="font-extrabold text-[#475569]">重量对等逻辑公式 (Constraint)</div>
+                                  <div className="font-mono text-[8px] text-slate-400">NTGEW &lt; BRGEW (净重应低于毛重)</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const exists = accuracyRules.some(r => r.id === 'rule-extracted-2');
+                                    if (!exists) {
+                                      setAccuracyRules([...accuracyRules, {
+                                        id: 'rule-extracted-2',
+                                        type: 'physical',
+                                        title: '物理毛净重常识边界检验',
+                                        desc: 'AI 抽取自 "物料主数据规范_v2.pdf"',
+                                        config: { fieldA: 'NTGEW', operator: '<', fieldB: 'BRGEW' }
+                                      }]);
+                                    }
+                                  }}
+                                  className="text-[8px] px-1.5 py-0.5 font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded hover:bg-emerald-100/50 transition-colors"
+                                >
+                                  点选导入
+                                </button>
+                              </div>
+
+                              {/* Rule Item 3 */}
+                              <div className="p-1.5 bg-white border border-slate-200/60 rounded-lg flex items-center justify-between text-[9px]">
+                                <div className="space-y-0.5">
+                                  <div className="font-extrabold text-[#475569]">物料组与利润中心规范 (Mapping)</div>
+                                  <div className="font-mono text-[8px] text-slate-400">MATKL="1001" ➔ PRCTR="P100"</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    const exists = accuracyRules.some(r => r.id === 'rule-extracted-3');
+                                    if (!exists) {
+                                      setAccuracyRules([...accuracyRules, {
+                                        id: 'rule-extracted-3',
+                                        type: 'mapping',
+                                        title: '物料组与利润中心映射校验',
+                                        desc: 'AI 提取：校验高价值工业件组是否及时锁定 P100 利润核算中枢',
+                                        config: { ifField: 'MATKL', ifValue: '1001', thenField: 'PRCTR', thenOperator: '==', thenValue: 'P100' }
+                                      }]);
+                                    }
+                                  }}
+                                  className="text-[8px] px-1.5 py-0.5 font-bold text-emerald-600 bg-emerald-50 border border-emerald-100 rounded hover:bg-emerald-100/50 transition-colors"
+                                >
+                                  点选导入
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section 2: Rule Orchestrator & Operators */}
                       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs">
                         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <Activity size={13} className="text-amber-500" />
-                            <span>1. 值域与工业逻辑校验算子</span>
+                            <span>2. 规则编排工作流 (Rule Orchestrator)</span>
                           </span>
-                          <span className="text-[9px] font-bold text-amber-600 font-mono">2 项校验已载入</span>
+                          <span className="text-[9px] font-bold text-slate-500 font-mono">{accuracyRules.length} 校验已载入</span>
                         </div>
 
-                        <div className="space-y-2.5">
-                          {/* Weight Constraint rule */}
-                          <div 
-                            onClick={() => setAccuracyWeightsGroup(!accuracyWeightsGroup)}
-                            className="p-3 bg-slate-50 hover:bg-slate-100/40 rounded-xl border border-slate-200/80 flex items-center justify-between cursor-pointer transition-all"
-                          >
-                            <div className="space-y-0.5 pr-2 min-w-0">
-                              <p className="font-black text-slate-800 font-mono text-[10px]">BRGEW &gt; NTGEW 常识对等控制</p>
-                              <p className="text-[8.5px] text-slate-500 font-semibold leading-normal">物理毛重项目必须严格大于对应的净重字段，防范常识常务异常</p>
-                            </div>
-                            <div className={`w-8 h-4 shrink-0 rounded-full p-[2px] transition-colors relative ${accuracyWeightsGroup ? 'bg-blue-600' : 'bg-slate-200'}`}>
-                              <div className={`w-3 h-3 bg-white rounded-full transition-all ${accuracyWeightsGroup ? 'translate-x-[16px]' : 'translate-x-0'}`} />
-                            </div>
+                        {/* Four Operators buttons */}
+                        <div className="space-y-1.5">
+                          <p className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">选择系统预置算子模版 (一键注入规则包)</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                              { label: '物理常识算子', desc: 'A < B 关系校验', color: 'hover:border-amber-400 hover:bg-amber-50/20 text-amber-700', type: 'physical' },
+                              { label: '映射一致算子', desc: 'If A -> Then B 映射', color: 'hover:border-blue-400 hover:bg-blue-50/20 text-blue-700', type: 'mapping' },
+                              { label: '语义关联算子', desc: 'AI MAKTX NLP 解析', color: 'hover:border-indigo-400 hover:bg-indigo-50/20 text-indigo-700', type: 'semantic' },
+                              { label: '历史离群算子', desc: 'Price +/- 偏离审计', color: 'hover:border-rose-400 hover:bg-rose-50/20 text-rose-700', type: 'outlier' }
+                            ].map((op, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  const randomId = 'rule-' + Date.now();
+                                  let newRule: any = {
+                                    id: randomId,
+                                    type: op.type,
+                                    title: op.label,
+                                    desc: `自定义配置的：${op.label}`,
+                                  };
+                                  if (op.type === 'physical') {
+                                    newRule.config = { fieldA: 'LAENG', operator: '>', fieldB: '0' };
+                                  } else if (op.type === 'mapping') {
+                                    newRule.config = { ifField: 'MTART', ifValue: 'HALB', thenField: 'BKLAS', thenOperator: '==', thenValue: '7920' };
+                                  } else if (op.type === 'semantic') {
+                                    newRule.config = { field: 'MAKTX', target: 'MATKL', method: 'NLP' };
+                                  } else {
+                                    newRule.config = { field: 'BRGEW', limitMode: '3-Sigma' };
+                                  }
+                                  setAccuracyRules([...accuracyRules, newRule]);
+                                }}
+                                className={`p-2.5 rounded-xl border border-slate-200 bg-white text-left transition-all cursor-pointer shadow-3xs flex flex-col justify-center ${op.color}`}
+                              >
+                                <div className="text-[9.5px] font-black">{op.label}</div>
+                                <div className="text-[7.5px] opacity-75 mt-0.5 leading-none">{op.desc}</div>
+                              </button>
+                            ))}
                           </div>
+                        </div>
 
-                          {/* Dimensions bounds rule */}
-                          <div 
-                            onClick={() => setAccuracyLengthGroup(!accuracyLengthGroup)}
-                            className="p-3 bg-slate-50 hover:bg-slate-100/40 rounded-xl border border-slate-200/80 flex items-center justify-between cursor-pointer transition-all"
-                          >
-                            <div className="space-y-0.5 pr-2 min-w-0">
-                              <p className="font-black text-slate-800 font-mono text-[10px]">LAENG/BREIT 物数限制管制</p>
-                              <p className="text-[8.5px] text-slate-500 font-semibold leading-normal">检查并捕获任何长、宽、高物理尺幅超出合理工业预置阀值的越界事件</p>
-                            </div>
-                            <div className={`w-8 h-4 shrink-0 rounded-full p-[2px] transition-colors relative ${accuracyLengthGroup ? 'bg-blue-600' : 'bg-slate-200'}`}>
-                              <div className={`w-3 h-3 bg-white rounded-full transition-all ${accuracyLengthGroup ? 'translate-x-[16px]' : 'translate-x-0'}`} />
-                            </div>
-                          </div>
+                        {/* Rules List rendering */}
+                        <div className="space-y-2 mt-2 pt-2 border-t border-slate-100">
+                          {accuracyRules.map((rule, idx) => (
+                            <div 
+                              key={rule.id}
+                              className="p-3 rounded-xl border border-slate-200 bg-slate-50/40 space-y-2 text-[10px]"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div className="space-y-0.5">
+                                  <span className="text-[8px] uppercase font-black tracking-wider text-amber-600 font-mono bg-amber-50 px-1.5 py-0.2 rounded border border-amber-100">
+                                    {rule.type === 'physical' ? '物理规则' : rule.type === 'mapping' ? '映射规则' : rule.type === 'semantic' ? '智能 NLP' : '价格离群'}
+                                  </span>
+                                  <div className="font-extrabold text-slate-850 mt-1">{rule.title}</div>
+                                  <div className="text-[8.5px] text-slate-500 font-semibold">{rule.desc}</div>
+                                </div>
+                                <button
+                                  onClick={() => {
+                                    setAccuracyRules(accuracyRules.filter(r => r.id !== rule.id));
+                                  }}
+                                  className="p-1 rounded text-red-500 hover:bg-red-50/50 cursor-pointer"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
 
-                          {/* Historical Outlier detection (mock extra slider toggle) */}
-                          <div 
-                            onClick={() => setAccuracyOutlierToggle(!accuracyOutlierToggle)}
-                            className="p-3 bg-slate-50 hover:bg-slate-100/40 rounded-xl border border-slate-200/80 flex items-center justify-between cursor-pointer transition-all"
-                          >
-                            <div className="space-y-0.5 pr-2 min-w-0">
-                              <p className="font-black text-slate-800 font-mono text-[10px]">历史价格离群审计 ∉ [Historical ± 3σ]</p>
-                              <p className="text-[8.5px] text-slate-505 text-slate-500 font-semibold leading-normal">移动平均价与标准计价模型突发性财务偏离审计</p>
+                              {/* Rule Config Block Editor */}
+                              <div className="p-2 bg-white rounded-lg border border-slate-200/50 space-y-1.5 font-mono text-[9px] text-slate-700">
+                                {rule.type === 'physical' && (
+                                  <div className="flex items-center gap-1">
+                                    <span className="font-bold text-slate-800">{rule.config?.fieldA}</span>
+                                    <span>{rule.config?.operator}</span>
+                                    <span className="font-bold text-slate-800">{rule.config?.fieldB}</span>
+                                    <span className="ml-auto text-slate-400 font-sans text-[7.5px] font-black">逻辑公式合法</span>
+                                  </div>
+                                )}
+                                {rule.type === 'mapping' && (
+                                  <div className="space-y-0.5">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[8px] bg-slate-100 px-1 rounded uppercase text-slate-500 font-sans font-bold">IF</span>
+                                      <span className="font-bold text-slate-850">{rule.config?.ifField} == {rule.config?.ifValue}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[8px] bg-slate-100 px-1 rounded uppercase text-slate-500 font-sans font-bold">THEN</span>
+                                      <span className="font-bold text-slate-850">{rule.config?.thenField} {rule.config?.thenOperator} {rule.config?.thenValue}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {rule.type === 'semantic' && (
+                                  <div className="flex items-center gap-1">
+                                    <span>AI 校验</span>
+                                    <span className="font-bold text-blue-600">{rule.config?.field}</span>
+                                    <span>是否蕴含并贴合</span>
+                                    <span className="font-bold text-indigo-600">{rule.config?.target}</span>
+                                  </div>
+                                )}
+                                {rule.type === 'outlier' && (
+                                  <div className="flex items-center gap-1">
+                                    <span>评估序列</span>
+                                    <span className="font-bold text-red-600">{rule.config?.field}</span>
+                                    <span>离群识别:</span>
+                                    <span className="text-[8px] bg-red-50 text-red-700 px-1 rounded">{rule.config?.limitMode} 突发阈值</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                            <div className={`w-8 h-4 shrink-0 rounded-full p-[2px] transition-colors relative ${accuracyOutlierToggle ? 'bg-blue-600' : 'bg-slate-200'}`}>
-                              <div className={`w-3 h-3 bg-white rounded-full transition-all ${accuracyOutlierToggle ? 'translate-x-[16px]' : 'translate-x-0'}`} />
-                            </div>
-                          </div>
+                          ))}
                         </div>
                       </div>
 
@@ -2386,7 +2763,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                         <div className="flex justify-between items-center pb-1">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <Play size={13} className="text-emerald-500" />
-                            <span>2. 值域精度高仿真运行测试</span>
+                            <span>3. 值域精度高仿真运行测试</span>
                           </span>
                           <button
                             onClick={handleSimulateAccuracy}
@@ -2404,19 +2781,48 @@ export const MobileView: React.FC<MobileViewProps> = ({
                             <span className="text-[9px] font-black tracking-widest animate-pulse">正在提取校验池样本进行试对撞算...</span>
                           </div>
                         ) : accuracySimResult ? (
-                          <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-2 animate-fade-in">
-                            <div className="flex justify-between items-center text-[10px]">
-                              <span className="font-bold text-slate-700">重算后预估评分:</span>
-                              <span className="font-mono font-black text-emerald-700">{accuracySimResult.score}%</span>
+                          <div className="space-y-2.5 animate-fade-in">
+                            <div className="p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl space-y-2">
+                              <div className="flex justify-between items-center text-[10px]">
+                                <span className="font-bold text-slate-700">重算后预估评分:</span>
+                                <span className="font-mono font-black text-emerald-700">{accuracySimResult.score}%</span>
+                              </div>
+                              <div className="text-[9px] text-emerald-600 flex items-center gap-1 font-bold">
+                                <Check size={12} />
+                                诊断异常减少了 {accuracySimResult.reduced} 项 (规则覆盖率提升至 95%)
+                              </div>
                             </div>
-                            <div className="text-[9px] text-emerald-600 flex items-center gap-1 font-bold">
-                              <Check size={12} />
-                              诊断异常减少了 {accuracySimResult.reduced} 项 (规则覆盖率提升至 95%)
+
+                            {/* Simulated anomalous sample (Anomalies details) */}
+                            <div className="space-y-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200/50">
+                              <div className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">Top 不合规测试诊断对撞样本</div>
+                              
+                              {/* Sample 1 */}
+                              <div className="p-2 bg-white border border-slate-200/50 rounded-lg text-[9px] font-bold text-slate-700">
+                                <div className="flex justify-between pb-1 border-b border-slate-100 mb-1">
+                                  <span className="font-mono text-indigo-700">物料 MAND-10024</span>
+                                  <span className="text-red-500 text-[8px]">物理常识越界</span>
+                                </div>
+                                <div className="text-slate-500 text-[8.5px] font-medium leading-normal">
+                                  检出 NTGEW &gt; BRGEW (净重：800.5 KG 超出物理总毛重：750.3 KG)
+                                </div>
+                              </div>
+
+                              {/* Sample 2 */}
+                              <div className="p-2 bg-white border border-slate-200/50 rounded-lg text-[9px] font-bold text-slate-700">
+                                <div className="flex justify-between pb-1 border-b border-slate-100 mb-1">
+                                  <span className="font-mono text-indigo-700">物料 MAND-29910</span>
+                                  <span className="text-amber-500 text-[8px]">映射不一致</span>
+                                </div>
+                                <div className="text-slate-500 text-[8.5px] font-medium leading-normal">
+                                  类型为 ROH (原材料)，但评估类字段被手动修改为了 7920 (半成品评估)
+                                </div>
+                              </div>
                             </div>
                           </div>
                         ) : (
                           <p className="text-[9.5px] text-slate-400 font-bold text-center py-2 leading-relaxed">
-                            修改规则控制对等指标后，点击右侧的“运行模拟”检测受其控制影响的数据比率。
+                            修改规则控制对等指标后，点击右上角的“运行模拟”检测受其控制影响的数据比率。
                           </p>
                         )}
                       </div>
@@ -2426,42 +2832,134 @@ export const MobileView: React.FC<MobileViewProps> = ({
                   {/* 4. COMPLIANCE CHECKLIST */}
                   {settingsSubTab === 'compliance' && (
                     <div className="space-y-4 animate-fade-in">
-                      {/* Section 1: Dual-Ring compliance policies */}
+                      {/* Web View Header Translation Card */}
+                      <div className="bg-gradient-to-br from-violet-50/50 via-white to-white rounded-2xl border border-slate-200/80 p-4 shadow-3xs space-y-1.5 animate-fade-in">
+                        <div className="flex items-center gap-2">
+                          <ShieldCheck size={15} className="text-violet-500" />
+                          <h3 className="text-xs font-black text-slate-800 leading-tight">合规性诊断工作台 (Compliance Config Studio)</h3>
+                        </div>
+                        <p className="text-[9.5px] text-slate-500 font-bold leading-relaxed">
+                          双环模型：管理内外部合规红线，注入法规与企业标准文件。
+                        </p>
+                      </div>
+
+                      {/* Section 1: Dual-Ring Knowledge base files */}
                       <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs">
                         <div className="flex justify-between items-center pb-2 border-b border-slate-100">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <ShieldCheck size={13} className="text-violet-500" />
-                            <span>1. 法律底线与企业管理双环法规红线</span>
+                            <span>1. 法律底线与企业标准合规库注入</span>
                           </span>
                         </div>
 
-                        <div className="space-y-2.5">
-                          {[
-                            { id: 'c1', bg: 'from-rose-500/10 to-transparent', border: 'border-rose-100/80', ring: '外环：法律底线', title: '海关税号 (STEUC) 有效性核准', desc: '利用2026最新税则通关库，对跨国供应链条目进行一致性强控校验。' },
-                            { id: 'c2', bg: 'from-rose-500/10 to-transparent', border: 'border-rose-100/80', ring: '外环：出口生命线', title: 'RoHS 6+10 环保证书期限校验', desc: '动态对撞供应商物性报告截止日期，防范限用危化品未声明出口风险。' },
-                            { id: 'c3', bg: 'from-amber-500/10 to-transparent', border: 'border-amber-100/85', ring: '内环：规范基石', title: '物料命名规则语义字根校核', desc: '语义分词评估，强制约束描述排列符合 [品名+技术规格] 自带词汇律。' },
-                            { id: 'c4', bg: 'from-amber-500/10 to-transparent', border: 'border-amber-100/85', ring: '内环：协同安全', title: 'PLM E-BOM 图纸文档关联检查', desc: '稽核并捕捉自主设计类零部件缺失图档、技术底稿导致现场乱产损失。' },
-                          ].map(item => {
-                            const isActive = complianceToggles[item.id];
-                            return (
-                              <div
-                                key={item.id}
-                                onClick={() => setComplianceToggles({...complianceToggles, [item.id]: !isActive})}
-                                className={`p-3 bg-gradient-to-r ${item.bg} hover:via-slate-50/20 to-white border ${item.border} rounded-xl cursor-pointer transition-all flex items-center justify-between`}
-                              >
-                                <div className="space-y-1 pr-3 min-w-0">
-                                  <span className="text-[7.5px] font-bold px-1.5 py-0.2 bg-white/80 text-slate-600 rounded border border-slate-200 uppercase tracking-tight block w-fit">
-                                    {item.ring}
-                                  </span>
-                                  <p className="text-[10px] font-extrabold text-slate-800 truncate">{item.title}</p>
-                                  <p className="text-[8.5px] text-slate-400 leading-normal font-semibold line-clamp-2">{item.desc}</p>
+                        <div className="space-y-3">
+                          {/* External Law Circle */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="text-[8px] bg-red-500 text-white px-1.5 py-0.2 rounded font-black uppercase tracking-tight">外环 (法律合规)</span>
+                              <span className="text-[8.5px] font-bold text-slate-500">生存底线：海关/环保文件库</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {complianceDocs.external.map(doc => (
+                                <button
+                                  key={doc.id}
+                                  onClick={() => setComplianceActiveSelectedFileDoc(complianceActiveSelectedFileDoc === doc.name ? null : doc.name)}
+                                  className={`p-2 rounded-xl text-left border flex flex-col justify-between transition-colors cursor-pointer text-[9px] font-bold shadow-3xs min-h-[50px] ${
+                                    complianceActiveSelectedFileDoc === doc.name
+                                      ? 'border-red-500 bg-red-50/20 text-red-700' 
+                                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                                  }`}
+                                >
+                                  <span className="truncate w-full">{doc.name}</span>
+                                  <span className="text-[7.5px] opacity-75 text-red-600 font-medium">包含 {doc.rules} 条法规规则</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Internal Codes Circle */}
+                          <div>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                              <span className="text-[8px] bg-amber-500 text-white px-1.5 py-0.2 rounded font-black uppercase tracking-tight">内环 (企业规范)</span>
+                              <span className="text-[8.5px] font-bold text-slate-500">管理规范：命名及 PLM 主册</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {complianceDocs.internal.map(doc => (
+                                <button
+                                  key={doc.id}
+                                  onClick={() => setComplianceActiveSelectedFileDoc(complianceActiveSelectedFileDoc === doc.name ? null : doc.name)}
+                                  className={`p-2 rounded-xl text-left border flex flex-col justify-between transition-colors cursor-pointer text-[9px] font-bold shadow-3xs min-h-[50px] ${
+                                    complianceActiveSelectedFileDoc === doc.name
+                                      ? 'border-amber-550 border-amber-500 bg-amber-50/20 text-amber-700' 
+                                      : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
+                                  }`}
+                                >
+                                  <span className="truncate w-full">{doc.name}</span>
+                                  <span className="text-[7.5px] opacity-75 text-amber-600 font-medium">包含 {doc.rules} 条命名条例</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {complianceActiveSelectedFileDoc && (
+                          <div className="flex items-center justify-between p-1 px-2.5 bg-violet-50 text-violet-750 text-[8.5px] font-bold rounded-lg border border-violet-100">
+                            <span>已锁定文档：{complianceActiveSelectedFileDoc} 规则筛选中</span>
+                            <button onClick={() => setComplianceActiveSelectedFileDoc(null)} className="text-violet-600 hover:text-red-500 font-black">
+                              取消筛选
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Section 2: Rule lists & details */}
+                      <div className="bg-white rounded-2xl border border-slate-200/80 p-4 space-y-3 shadow-3xs">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                          <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
+                            <CheckCircle2 size={13} className="text-violet-500" />
+                            <span>2. 诊断红线检验项 (Extracted Rules)</span>
+                          </span>
+                          <span className="text-[9px] font-bold text-slate-500 font-mono">
+                            {complianceRulesList.filter(r => !complianceActiveSelectedFileDoc || r.sourceDoc === complianceActiveSelectedFileDoc).length} 项
+                          </span>
+                        </div>
+
+                        <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                          {complianceRulesList
+                            .filter(rule => !complianceActiveSelectedFileDoc || rule.sourceDoc === complianceActiveSelectedFileDoc)
+                            .map(rule => {
+                              return (
+                                <div
+                                  key={rule.id}
+                                  onClick={() => setComplianceActiveSelectedRuleId(rule.id)}
+                                  className={`p-3 border rounded-xl cursor-pointer transition-all flex flex-col justify-between shadow-3xs hover:-translate-y-0.5 active:translate-y-0 ${
+                                    rule.type === 'external' 
+                                      ? 'bg-gradient-to-r from-red-50/10 to-transparent border-red-200/60 hover:border-red-300' 
+                                      : 'bg-gradient-to-r from-amber-50/10 to-transparent border-amber-200/60 hover:border-amber-300'
+                                  }`}
+                                >
+                                  <div className="space-y-1.5 pr-2 min-w-0">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={`text-[7.5px] font-bold px-1.5 py-0.2 bg-white/85 rounded border uppercase ${
+                                        rule.type === 'external' ? 'text-red-650 border-red-200 text-red-600' : 'text-amber-650 border-amber-200 text-amber-600'
+                                      }`}>
+                                        {rule.type === 'external' ? '外环法规' : '内环范式'}
+                                      </span>
+                                      <span className="text-[8px] font-black text-slate-400 font-mono italic truncate max-w-[100px]">{rule.sourceDoc}</span>
+                                    </div>
+                                    <p className="text-[10px] font-extrabold text-slate-800 truncate">{rule.title}</p>
+                                    <p className="text-[8.5px] text-slate-500 leading-normal font-semibold line-clamp-1">{rule.desc}</p>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-100 text-[8px] uppercase font-black text-slate-400">
+                                    <span>对撞方式: {rule.action}</span>
+                                    <span className="text-violet-600 flex items-center gap-0.5 font-bold hover:underline">
+                                      详情
+                                      <ChevronRight size={10} />
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className={`w-8 h-4 shrink-0 rounded-full p-[2px] transition-colors relative ${isActive ? 'bg-indigo-600' : 'bg-slate-200'}`}>
-                                  <div className={`w-3 h-3 bg-white rounded-full transition-all ${isActive ? 'translate-x-[16px]' : 'translate-x-0'}`} />
-                                </div>
-                              </div>
-                            );
-                          })}
+                              );
+                            })}
                         </div>
                       </div>
 
@@ -2470,7 +2968,7 @@ export const MobileView: React.FC<MobileViewProps> = ({
                         <div className="flex justify-between items-center">
                           <span className="text-[11px] font-black text-slate-800 flex items-center gap-1.5">
                             <ShieldAlert size={13} className="text-violet-500" />
-                            <span>2. 内外红线合规审计对撞</span>
+                            <span>3. 内外红线合规审计对撞</span>
                           </span>
                           <button
                             onClick={handleRunComplianceAudit}
@@ -2488,21 +2986,114 @@ export const MobileView: React.FC<MobileViewProps> = ({
                             <span className="text-[9px] font-black tracking-widest animate-pulse">正在提取双环合规条目与模型数据库交叉对撞中...</span>
                           </div>
                         ) : complianceAuditResult ? (
-                          <div className="p-3 bg-violet-50 rounded-xl space-y-2 animate-fade-in border border-violet-100">
-                            <div className="flex justify-between items-center text-[10px]">
-                              <span className="font-bold text-slate-700">混合对撞通过重算的合规得分为:</span>
-                              <span className="font-mono font-black text-violet-700">{complianceAuditResult.score}%</span>
+                          <div className="space-y-3.5 animate-fade-in">
+                            <div className="p-3 bg-violet-50 rounded-xl space-y-2 border border-violet-100">
+                              <div className="flex justify-between items-center text-[10px]">
+                                <span className="font-bold text-slate-700">混合对撞通过重算的合规得分为:</span>
+                                <span className="font-mono font-black text-violet-700">{complianceAuditResult.score}%</span>
+                              </div>
+                              <p className="text-[8.5px] text-violet-600 leading-normal font-semibold">
+                                已配置海关和环保规则自动对撞，当前系统的法律风险隐患极低。
+                              </p>
                             </div>
-                            <p className="text-[8.5px] text-violet-600 leading-normal font-semibold">
-                              发现 2 处潜在不一致风险。已配置海关和环保规则对撞，检测系统正密切监控。
-                            </p>
+
+                            {/* Risk grading report */}
+                            <div className="space-y-2 rounded-xl bg-slate-50 p-2.5 border border-slate-200/50">
+                              <div className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">合规健康度异常诊断明细</div>
+                              
+                              {/* Customs violated */}
+                              <div className="p-2.5 bg-white border border-red-100 rounded-lg text-[9px] font-bold">
+                                <div className="flex items-center justify-between pb-1 border-b border-slate-100 mb-1">
+                                  <span className="text-slate-800">物料 MATERIAL-8002</span>
+                                  <span className="text-[7.5px] font-mono px-1 bg-red-50 text-red-650 border border-red-100 rounded text-red-600">外环违法危险</span>
+                                </div>
+                                <p className="text-slate-500 font-medium text-[8.5px] leading-normal">
+                                  该跨国供应链物料未维护合法的 HS Code / STEUC 海关税则号，面临通关滞库风险。
+                                </p>
+                              </div>
+
+                              {/* Internal naming violated */}
+                              <div className="p-2.5 bg-white border border-amber-100 rounded-lg text-[9px] font-bold">
+                                <div className="flex items-center justify-between pb-1 border-b border-slate-100 mb-1">
+                                  <span className="text-slate-800">物料 MATERIAL-9051</span>
+                                  <span className="text-[7.5px] font-mono px-1 bg-amber-50 text-amber-650 border border-amber-100 rounded text-amber-600">内环规范违约</span>
+                                </div>
+                                <p className="text-slate-500 font-medium text-[8.5px] leading-normal">
+                                  MAKTX 命名不合规范，错位字根导致语义比对对撞系统解析失败，极易影响仓库检索效率。
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         ) : (
-                          <p className="text-[9.5px] text-slate-405 text-slate-400 font-bold text-center py-2 leading-relaxed">
-                            修改双环红线后，轻触右侧的“运行审计”调用外接海关与RoHS服务数据库进行对撞演算。
+                          <p className="text-[9.5px] text-slate-400 font-bold text-center py-2 leading-relaxed">
+                            修改双环红线后，轻触右上角的“运行审计”调用外接海关与RoHS服务数据库进行对撞演算。
                           </p>
                         )}
                       </div>
+
+                      {/* RULES DETAIL LAYER OVERLAY (SLIDE IN OVER MOBILEVIEW CONTENT) */}
+                      {complianceActiveSelectedRuleId && (
+                        (() => {
+                          const rule = complianceRulesList.find(r => r.id === complianceActiveSelectedRuleId);
+                          if (!rule) return null;
+                          return (
+                            <div className="fixed inset-x-0 bottom-0 top-[120px] bg-white z-50 rounded-t-2xl shadow-2xl flex flex-col overflow-hidden border-t border-slate-200 animate-in slide-in-from-bottom duration-300">
+                              <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+                                <span className="text-xs font-black text-slate-800">规则诊断详情页 (Redline Rule Detail)</span>
+                                <button 
+                                  onClick={() => setComplianceActiveSelectedRuleId(null)}
+                                  className="p-1 px-2 text-[10px] font-black text-slate-500 hover:text-slate-800 bg-slate-200 rounded-lg"
+                                >
+                                  返回列表
+                                </button>
+                              </div>
+                              <div className="p-5 flex-1 overflow-y-auto space-y-4">
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className={`text-[8px] font-black px-1.5 py-0.2 rounded border ${
+                                      rule.type === 'external' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-700 border-amber-100'
+                                    }`}>
+                                      {rule.type === 'external' ? '外环法则 (External)' : '内环标准 (Internal)'}
+                                    </span>
+                                    <span className="text-[8.5px] text-slate-400 font-bold">{rule.sourceDoc}</span>
+                                  </div>
+                                  <h4 className="text-sm font-black text-slate-850">{rule.title}</h4>
+                                  <p className="text-[10px] text-slate-500 leading-relaxed font-semibold">{rule.desc}</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">执行模式 (Action)</div>
+                                    <div className="text-[9.5px] font-black text-slate-800 mt-0.5">{rule.action}</div>
+                                  </div>
+                                  <div className="p-2.5 bg-slate-50 border border-slate-100 rounded-xl">
+                                    <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">风险评级 (Severity)</div>
+                                    <div className={`text-[9.5px] font-black mt-0.5 ${rule.type === 'external' ? 'text-red-650 text-red-600' : 'text-amber-650 text-amber-600'}`}>
+                                      {rule.severity}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <div className="text-[8.5px] uppercase font-black text-slate-400 tracking-wider">逻辑引擎演算说明 (Mathematical Logic)</div>
+                                  <div className="p-3 bg-slate-900 rounded-xl text-[9.5px] text-emerald-400 leading-relaxed font-mono">
+                                    {rule.logic}
+                                  </div>
+                                </div>
+
+                                <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-100 flex items-center gap-3">
+                                  <FileText size={18} className="text-emerald-600 shrink-0" />
+                                  <div className="text-[9.5px] text-emerald-800 leading-normal flex-1">
+                                    <div className="font-bold">溯源凭证文件 (Tethered Document)</div>
+                                    <div className="opacity-80 text-[8px]">{rule.sourceDoc}</div>
+                                  </div>
+                                  <button className="text-[8.5px] font-black text-emerald-600 hover:underline">查看原文 PDF</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      )}
                     </div>
                   )}
 
